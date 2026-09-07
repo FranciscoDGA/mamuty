@@ -301,8 +301,6 @@ export default function Home() {
   }
 
   return (
-    <AppProvider>
-      <MainContent />
-    </AppProvider>
+    <MainContent />
   );
 }

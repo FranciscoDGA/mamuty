@@ -39,11 +39,15 @@ export const metadata: Metadata = {
   },
 };
 
+import { AppProvider } from '@/context/AppContext';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <body className="min-h-screen bg-[#070a12] text-slate-100 antialiased selection:bg-amber-500 selection:text-black">
-        {children}
+        <AppProvider>
+          {children}
+        </AppProvider>
       </body>
     </html>
   );
