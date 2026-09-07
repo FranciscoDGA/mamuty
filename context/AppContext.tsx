@@ -230,26 +230,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }
 
-      // Insert appointment in Supabase
-      const { error: aptErr } = await supabase
+      // 2. Resolve Service UUID
+      const isUUID = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+      
+      let finalServiceId = apt.serviceIds?.[0];
+      if (!isUUID(finalServiceId)) {
+        const found = services.find(s => isUUID(s.id) && (s.id === finalServiceId || s.name === apt.serviceNames?.[0]));
+        finalServiceId = found ? found.id : services.find(s => isUUID(s.id))?.id;
+      }
+
+      // 3. Resolve Barber UUID
+      let finalBarberId = apt.barberId;
+      if (!isUUID(finalBarberId) || finalBarberId === 'any') {
+        const found = barbers.find(b => isUUID(b.id) && (b.id === finalBarberId || b.name === apt.barberName));
+        finalBarberId = found ? found.id : barbers.find(b => isUUID(b.id) && b.id !== 'any')?.id;
+      }
+
+      // 4. Insert appointment in Supabase (omit 'source' column since it may not exist in DB schema, save in notes instead)
+      const appointmentPayload: any = {
+        customer_id: customerId || null,
+        service_id: finalServiceId || null,
+        barber_id: finalBarberId || null,
+        appointment_date: apt.date || new Date().toISOString().split('T')[0],
+        appointment_time: (apt.time?.length === 5 ? apt.time + ':00' : apt.time) || '10:00:00',
+        status: 'confirmed',
+        price: apt.totalPrice || 0,
+        duration_minutes: apt.totalDurationMinutes || 30,
+        notes: apt.source ? `Origem: ${apt.source}` : 'Origem: web',
+      };
+
+      const { data: insertedApt, error: aptErr } = await supabase
         .from('appointments')
-        .insert({
-          customer_id: customerId || null,
-          service_id: apt.serviceIds?.[0] || null,
-          barber_id: apt.barberId || null,
-          appointment_date: apt.date,
-          appointment_time: (apt.time?.length === 5 ? apt.time + ':00' : apt.time) || '10:00:00',
-          status: 'confirmed',
-          source: apt.source || 'web',
-          price: apt.totalPrice || 0,
-          duration_minutes: apt.totalDurationMinutes || 30,
-        });
+        .insert(appointmentPayload)
+        .select('*')
+        .single();
 
       if (aptErr) {
-        console.warn('Supabase insert note:', aptErr);
+        console.error('Supabase appointment insert error:', aptErr);
+      } else {
+        console.log('Agendamento salvo com sucesso no Supabase:', insertedApt);
       }
     } catch (err) {
-      console.warn('Error saving to Supabase, saving in memory state:', err);
+      console.error('Error saving to Supabase:', err);
     }
 
     // Always update local state immediately so user sees appointment instantly
