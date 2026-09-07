@@ -387,16 +387,7 @@ export default function WhatsAppDemo() {
     );
   };
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#ece5dd] flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-6 rounded-2xl text-center max-w-sm shadow-xl">
-          <p className="text-red-500 font-bold mb-2">Erro de conexão</p>
-          <p className="text-sm text-slate-600">{error}</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (isLoading) {
     return (

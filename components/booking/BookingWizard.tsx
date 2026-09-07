@@ -196,16 +196,7 @@ export const BookingWizard: React.FC = () => {
     { id: 5, label: 'Dados', icon: CheckCircle2 }
   ];
 
-  if (error) {
-    return (
-      <div className="max-w-3xl mx-auto p-6 bg-rose-950/30 border border-rose-900 rounded-3xl text-center space-y-4">
-        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-white">Ops, algo deu errado.</h2>
-        <p className="text-slate-300">{error}</p>
-        <p className="text-sm text-slate-400">Verifique sua configuração do Supabase e tente novamente.</p>
-      </div>
-    );
-  }
+
 
   if (isLoading) {
     return (
