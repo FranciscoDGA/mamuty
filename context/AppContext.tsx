@@ -32,6 +32,7 @@ interface AppContextType {
   loyaltyRewards: any[];
   redeemLoyaltyReward: (...args: any[]) => any;
   reviews: any[];
+  refreshData: () => Promise<void>;
   isLoading: boolean;
 
   error: string | null;
@@ -260,6 +261,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         redeemLoyaltyReward: () => {},
         reviews: [],
 
+        refreshData: fetchData,
         isLoading,
         error
       }}
