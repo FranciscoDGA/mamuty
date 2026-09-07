@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="35%" stop-color="#f59e0b" />
+      <stop offset="80%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#f59e0b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Shield/Rounded Box -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)"/>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-opacity="0.4"/>
+
+  <!-- Subtle Pattern / Inner Ring -->
+  <circle cx="256" cy="236" r="160" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="8 8" opacity="0.4"/>
+
+  <!-- Stylized Barber Scissors Crossed with Razor -->
+  <g filter="url(#glow)">
+    <!-- Scissor Blade 1 -->
+    <path d="M170 340 C190 320 230 270 270 210 L330 130 C336 122 348 126 344 136 L300 230 C270 285 240 330 220 350 Z" fill="url(#silverGrad)" />
+    <!-- Scissor Blade 2 -->
+    <path d="M342 340 C322 320 282 270 242 210 L182 130 C176 122 164 126 168 136 L212 230 C242 285 272 330 292 350 Z" fill="url(#silverGrad)" />
+
+    <!-- Center Pivot Gem -->
+    <circle cx="256" cy="245" r="9" fill="url(#goldGrad)" stroke="#090d16" stroke-width="2" />
+
+    <!-- Scissor Handles Rings -->
+    <circle cx="150" cy="365" r="32" fill="none" stroke="url(#goldGrad)" stroke-width="12"/>
+    <circle cx="362" cy="365" r="32" fill="none" stroke="url(#goldGrad)" stroke-width="12"/>
+  </g>
+
+  <!-- Mammoth Head / Barber Crown Silhouette -->
+  <g fill="url(#goldGrad)">
+    <!-- Crown / Tusk Motif Top -->
+    <path d="M256 100 L275 145 L315 130 L295 168 L328 178 L256 165 L184 178 L217 168 L197 130 L237 145 Z" opacity="0.95" />
+    
+    <!-- Big Stylized Curving Mammoth Tusks -->
+    <path d="M190 230 C150 240 120 290 128 340 C132 360 148 375 158 355 C164 340 160 300 196 268 C204 260 200 240 190 230 Z" />
+    <path d="M322 230 C362 240 392 290 384 340 C380 360 364 375 354 355 C348 340 352 300 316 268 C308 260 312 240 322 230 Z" />
+  </g>
+
+  <!-- Brand Typography: MAMUTY -->
+  <text x="256" y="445" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="44" letter-spacing="9" fill="url(#goldGrad)">MAMUTY</text>
+  <text x="256" y="475" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="14" letter-spacing="5" fill="#94a3b8">BARBEARIA &amp; SALÃO</text>
+</svg>
