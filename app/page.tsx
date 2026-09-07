@@ -115,11 +115,18 @@ function MainContent() {
 
         {/* View Switcher - SPRINT 1 Foco apenas no agendamento */}
         {activeTab === 'agendar' && <BookingWizard />}
-        {activeTab === 'galeria' && null}
-        {activeTab === 'meus-agendamentos' && null}
-        {activeTab === 'fidelidade' && null}
-        {activeTab === 'avaliacoes' && null}
-        {activeTab === 'admin' && <AdminDashboard />}
+        {activeTab === 'admin' && (
+          <div className="text-center py-12 space-y-4">
+            <h2 className="text-xl font-bold text-white">Painel Administrativo Mamuty</h2>
+            <p className="text-sm text-slate-400">Acesse a nova área completa de gestão da barbearia.</p>
+            <a
+              href="/admin"
+              className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition shadow-lg shadow-amber-500/20"
+            >
+              Abrir Painel Admin &rarr;
+            </a>
+          </div>
+        )}
       </main>
 
       {/* Bottom Navigation for Mobile Devices */}
