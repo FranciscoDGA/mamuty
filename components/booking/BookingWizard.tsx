@@ -131,6 +131,24 @@ export const BookingWizard: React.FC = () => {
   const handleNextStep = () => setStep((s) => s + 1);
   const handlePrevStep = () => setStep((s) => s - 1);
 
+  const handleStepClick = (targetStep: number) => {
+    if (targetStep === step) return;
+    // Set sensible defaults if user jumps forward
+    if (targetStep >= 2 && !selectedService && services.length > 0) {
+      setSelectedService(services[0]);
+    }
+    if (targetStep >= 3 && !selectedBarber && barbers.length > 0) {
+      setSelectedBarber(barbers[0]);
+    }
+    if (targetStep >= 4 && !selectedDate && availableDates.length > 0) {
+      setSelectedDate(availableDates[0].iso);
+    }
+    if (targetStep >= 5 && !selectedTime && timeSlots.length > 0) {
+      setSelectedTime(timeSlots[0] || '10:00');
+    }
+    setStep(targetStep);
+  };
+
   const handleConfirmBooking = async () => {
     if (!selectedBarber || !selectedService || !selectedDate || !selectedTime || !customerName || !customerPhone) {
       setSubmitError('Por favor, preencha todos os dados.');
@@ -215,24 +233,56 @@ export const BookingWizard: React.FC = () => {
       </div>
 
       {step < 6 && (
-        <div className="flex items-center justify-between overflow-x-auto scrollbar-none pb-2 gap-2 mb-6">
-          {stepsList.map((s) => {
-            const Icon = s.icon;
-            const isActive = step === s.id;
-            const isPast = step > s.id;
-            return (
-              <div key={s.id} className="flex flex-col items-center min-w-[60px] gap-1.5 opacity-100">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                  isActive ? 'bg-amber-500 border-amber-500 text-slate-950' :
-                  isPast ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
-                  'bg-slate-900 border-slate-800 text-slate-500'
-                }`}>
-                  {isPast ? <Check className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
-                </div>
-                <span className={`text-[10px] font-bold ${isActive ? 'text-amber-400' : 'text-slate-500'}`}>{s.label}</span>
-              </div>
-            );
-          })}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center justify-between overflow-x-auto scrollbar-none pb-2 gap-2">
+            {stepsList.map((s) => {
+              const Icon = s.icon;
+              const isActive = step === s.id;
+              const isPast = step > s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleStepClick(s.id)}
+                  className="flex flex-col items-center min-w-[64px] gap-1.5 cursor-pointer group transition-transform active:scale-95 focus:outline-none"
+                  title={`Ir para etapa ${s.label}`}
+                >
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 transition-all shadow-sm ${
+                    isActive ? 'bg-amber-500 border-amber-400 text-slate-950 shadow-amber-500/20 scale-105' :
+                    isPast ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 group-hover:border-emerald-400' :
+                    'bg-slate-900 border-slate-800 text-slate-400 group-hover:border-slate-700 group-hover:text-white'
+                  }`}>
+                    {isPast ? <Check className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
+                  </div>
+                  <span className={`text-[11px] font-bold transition-colors ${
+                    isActive ? 'text-amber-400 font-extrabold' : 'text-slate-400 group-hover:text-slate-200'
+                  }`}>
+                    {s.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {step > 1 && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setSelectedService(null);
+                  setSelectedBarber(null);
+                  setSelectedDate('');
+                  setSelectedTime('');
+                  setCustomerName('');
+                  setCustomerPhone('');
+                }}
+                className="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1 transition py-1 px-2 rounded-lg hover:bg-slate-900"
+              >
+                ✕ Cancelar e voltar ao início
+              </button>
+            </div>
+          )}
         </div>
       )}
 

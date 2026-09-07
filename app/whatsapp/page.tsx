@@ -398,25 +398,49 @@ export default function WhatsAppDemo() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070a12] md:bg-slate-900 flex flex-col md:py-8 items-center">
-      
+    <div className="min-h-screen bg-[#070a12] md:bg-slate-900 flex flex-col md:py-6 items-center">
+      {/* Desktop Top Return Link */}
+      <div className="hidden md:flex items-center justify-between w-full max-w-md mb-3 px-2">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-amber-400 bg-slate-800/90 hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 transition"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Voltar para o Início</span>
+        </Link>
+        <span className="text-[11px] text-slate-400">Simulador WhatsApp</span>
+      </div>
+
       {/* Phone Mockup Container */}
       <div className="w-full h-screen md:h-[800px] max-h-screen md:max-w-md bg-[#efeae2] md:rounded-[2.5rem] md:shadow-2xl overflow-hidden flex flex-col relative md:border-[8px] border-slate-800">
         
         {/* Header */}
-        <div className="bg-[#008069] text-white p-3 flex items-center gap-3 z-10 shadow-md">
-          <Link href="/" className="p-1 -ml-1">
-            <ChevronLeft className="w-6 h-6" />
+        <div className="bg-[#008069] text-white p-3 flex items-center justify-between z-10 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <Link 
+              href="/" 
+              className="p-1.5 -ml-1 rounded-full hover:bg-black/10 transition flex items-center gap-1"
+              title="Voltar ao Início"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">
+               <div className="w-full h-full bg-amber-500 flex items-center justify-center">
+                 <Scissors className="w-4 h-4 text-slate-900" />
+               </div>
+            </div>
+            <div>
+              <h1 className="font-bold text-sm leading-tight">Mamuty Barbearia</h1>
+              <p className="text-[10px] text-white/80">Atendimento automático</p>
+            </div>
+          </div>
+
+          <Link
+            href="/"
+            className="text-xs bg-black/20 hover:bg-black/30 text-white px-2.5 py-1 rounded-lg transition font-semibold"
+          >
+            Fechar ✕
           </Link>
-          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
-             <div className="w-full h-full bg-amber-500 flex items-center justify-center">
-               <Scissors className="w-5 h-5 text-slate-900" />
-             </div>
-          </div>
-          <div className="flex-1">
-            <h1 className="font-semibold leading-tight">Mamuty Barbearia</h1>
-            <p className="text-[11px] text-white/80">Demonstração de atendimento automático</p>
-          </div>
         </div>
 
         {/* Chat Area */}

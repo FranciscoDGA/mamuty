@@ -16,9 +16,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <Link
               href="/"
-              className="md:hidden flex items-center gap-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg transition"
+              className="md:hidden flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg transition border border-slate-700"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Site
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar à Home
             </Link>
           </div>
           

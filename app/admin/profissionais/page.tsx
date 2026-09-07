@@ -57,9 +57,12 @@ export default function ProfissionaisPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-white">Profissionais</h1>
-        <button onClick={() => setIsModalOpen(true)} className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white">Equipe de Barbeiros</h1>
+          <p className="text-xs text-slate-400 mt-1">Cadastre e gerencie os profissionais da barbearia</p>
+        </div>
+        <button onClick={() => setIsModalOpen(true)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20">
           <Plus className="w-4 h-4" /> Novo Profissional
         </button>
       </div>
