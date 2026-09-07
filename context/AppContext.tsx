@@ -1,442 +1,267 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  Appointment,
-  AppointmentStatus,
-  Barber,
-  Customer,
-  FinancialTransaction,
-  LoyaltyReward,
-  PaymentStatus,
-  PortfolioPhoto,
-  Review,
-  SalonConfig,
-  Service,
-} from '@/lib/types';
-import {
-  INITIAL_APPOINTMENTS,
-  INITIAL_BARBERS,
-  INITIAL_CUSTOMERS,
-  INITIAL_LOYALTY_REWARDS,
-  INITIAL_PORTFOLIO,
-  INITIAL_REVIEWS,
-  INITIAL_SALON_CONFIG,
-  INITIAL_SERVICES,
-  INITIAL_TRANSACTIONS,
-} from '@/lib/data';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Appointment, Barber, Customer, Service, SalonConfig } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import { INITIAL_SALON_CONFIG } from '@/lib/data';
 
 interface AppContextType {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   services: Service[];
   barbers: Barber[];
   appointments: Appointment[];
-  reviews: Review[];
   customers: Customer[];
-  loyaltyRewards: LoyaltyReward[];
-  transactions: FinancialTransaction[];
   salonConfig: SalonConfig;
-  portfolio: PortfolioPhoto[];
   currentCustomer: Customer | null;
-  activeTab: 'agendar' | 'meus-agendamentos' | 'galeria' | 'fidelidade' | 'avaliacoes' | 'admin';
-  preselectedBarberId: string | null;
-  setActiveTab: (tab: 'agendar' | 'meus-agendamentos' | 'galeria' | 'fidelidade' | 'avaliacoes' | 'admin') => void;
-  setPreselectedBarberId: (id: string | null) => void;
-  toggleLikePortfolio: (id: string) => void;
-  setCurrentCustomer: (customer: Customer | null) => void;
-  createAppointment: (
-    appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'whatsappNotificationSent'>
-  ) => Appointment;
-  updateAppointmentStatus: (
-    id: string,
-    status: AppointmentStatus,
-    paymentStatus?: PaymentStatus
-  ) => void;
-  submitReview: (reviewData: Omit<Review, 'id' | 'createdAt'>) => void;
-  addTransaction: (txData: Omit<FinancialTransaction, 'id'>) => void;
-  updateSalonConfig: (newConfig: Partial<SalonConfig>) => void;
-  redeemLoyaltyReward: (rewardId: string, customerId: string) => boolean;
-  addCustomer: (customer: {
-    name: string;
-    phone: string;
-    email?: string;
-    notes?: string;
-    preferredBarberId?: string;
-  }) => Customer;
-  addService: (service: Omit<Service, 'id'>) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  resetAllData: () => void;
+  setCurrentCustomer: (c: Customer | null) => void;
+  createAppointment: (apt: Partial<Appointment> & { customerName: string, customerPhone: string, source?: string }) => Promise<void>;
+  updateAppointmentStatus: (id: string, status: 'confirmed' | 'completed' | 'cancelled') => Promise<void>;
+  
+  addCustomer: (...args: any[]) => any;
+  submitReview: (...args: any[]) => any;
+  transactions: any[];
+  updateSalonConfig: (...args: any[]) => any;
+  addTransaction: (...args: any[]) => any;
+  addService: (...args: any[]) => any;
+  deleteService: (...args: any[]) => any;
+  resetAllData: (...args: any[]) => any;
+  portfolio: any[];
+  toggleLikePortfolio: (...args: any[]) => any;
+  setPreselectedBarberId: (...args: any[]) => any;
+  loyaltyRewards: any[];
+  redeemLoyaltyReward: (...args: any[]) => any;
+  reviews: any[];
+  isLoading: boolean;
+
+  error: string | null;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'mamuty_barbershop_db_v1';
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [activeTab, setActiveTab] = useState('agendar');
+  const [services, setServices] = useState<Service[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [salonConfig] = useState<SalonConfig>(INITIAL_SALON_CONFIG);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-function getSavedData() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch (e) {
-    console.error('Failed to load initial local state', e);
-    return null;
-  }
-}
-
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [savedData] = useState(() => getSavedData());
-
-  const [activeTab, setActiveTab] = useState<
-    'agendar' | 'meus-agendamentos' | 'galeria' | 'fidelidade' | 'avaliacoes' | 'admin'
-  >('agendar');
-  const [preselectedBarberId, setPreselectedBarberId] = useState<string | null>(null);
-
-  const [services, setServices] = useState<Service[]>(() => savedData?.services || INITIAL_SERVICES);
-  const [barbers, setBarbers] = useState<Barber[]>(() => savedData?.barbers || INITIAL_BARBERS);
-  const [appointments, setAppointments] = useState<Appointment[]>(() => savedData?.appointments || INITIAL_APPOINTMENTS);
-  const [reviews, setReviews] = useState<Review[]>(() => savedData?.reviews || INITIAL_REVIEWS);
-  const [customers, setCustomers] = useState<Customer[]>(() => savedData?.customers || INITIAL_CUSTOMERS);
-  const [loyaltyRewards, setLoyaltyRewards] = useState<LoyaltyReward[]>(() => savedData?.loyaltyRewards || INITIAL_LOYALTY_REWARDS);
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>(() => savedData?.transactions || INITIAL_TRANSACTIONS);
-  const [salonConfig, setSalonConfig] = useState<SalonConfig>(() => savedData?.salonConfig || INITIAL_SALON_CONFIG);
-  const [portfolio, setPortfolio] = useState<PortfolioPhoto[]>(() => savedData?.portfolio || INITIAL_PORTFOLIO);
-  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(() => {
-    if (savedData?.currentCustomerId && savedData?.customers) {
-      const found = savedData.customers.find((c: Customer) => c.id === savedData.currentCustomerId);
-      if (found) return found;
-    }
-    return savedData?.customers?.[0] || INITIAL_CUSTOMERS[0];
-  });
-
-  // Save to localStorage on state change
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const payload = {
-        services,
-        barbers,
-        appointments,
-        reviews,
-        customers,
-        loyaltyRewards,
-        transactions,
-        salonConfig,
-        portfolio,
-        currentCustomerId: currentCustomer?.id,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.error('Failed to persist state', e);
-    }
-  }, [
-    services,
-    barbers,
-    appointments,
-    reviews,
-    customers,
-    loyaltyRewards,
-    transactions,
-    salonConfig,
-    portfolio,
-    currentCustomer,
-  ]);
-
-  const createAppointment = (
-    data: Omit<Appointment, 'id' | 'createdAt' | 'whatsappNotificationSent'>
-  ): Appointment => {
-    const newAppointment: Appointment = {
-      ...data,
-      id: `apt-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      whatsappNotificationSent: true,
-    };
-
-    setAppointments((prev) => [newAppointment, ...prev]);
-
-    // Check or update customer record for loyalty and history
-    setCustomers((prevCustomers) => {
-      const existing = prevCustomers.find(
-        (c) =>
-          c.phone.replace(/\D/g, '') === data.customerPhone.replace(/\D/g, '') ||
-          c.name.toLowerCase() === data.customerName.toLowerCase()
-      );
-
-      const pointsToAdd = Math.floor(data.totalPrice);
-
-      if (existing) {
-        const nextStamps = (existing.loyaltyStamps + 1) % (salonConfig.loyaltyStampsGoal + 1);
-        const nextVisits = existing.totalVisits + 1;
-        const nextSpent = existing.totalSpent + data.totalPrice;
-        const nextPoints = existing.loyaltyPoints + pointsToAdd;
-        const nextTier = nextVisits >= 10 ? 'Ouro VIP' : nextVisits >= 4 ? 'Prata' : 'Bronze';
-
-        const updated: Customer = {
-          ...existing,
-          name: data.customerName || existing.name,
-          email: data.customerEmail || existing.email,
-          totalVisits: nextVisits,
-          totalSpent: nextSpent,
-          loyaltyStamps: nextStamps === 0 ? 1 : nextStamps,
-          loyaltyPoints: nextPoints,
-          tier: nextTier,
-          lastVisit: data.date,
-          preferredBarberId: data.barberId,
-        };
-
-        if (currentCustomer && currentCustomer.id === existing.id) {
-          setCurrentCustomer(updated);
-        }
-
-        return prevCustomers.map((c) => (c.id === existing.id ? updated : c));
-      } else {
-        const newCustomer: Customer = {
-          id: `cli-${Date.now()}`,
-          name: data.customerName,
-          phone: data.customerPhone,
-          email: data.customerEmail,
-          totalVisits: 1,
-          totalSpent: data.totalPrice,
-          loyaltyStamps: 1,
-          loyaltyPoints: pointsToAdd,
-          tier: 'Bronze',
-          lastVisit: data.date,
-          preferredBarberId: data.barberId,
-        };
-
-        setCurrentCustomer(newCustomer);
-        return [newCustomer, ...prevCustomers];
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error('Supabase não configurado. Verifique as variáveis de ambiente.');
       }
-    });
 
-    // If paid via PIX or Cartão, register revenue transaction immediately
-    if (data.paymentStatus === 'pago') {
-      const newTx: FinancialTransaction = {
-        id: `tx-${Date.now()}`,
-        appointmentId: newAppointment.id,
-        type: 'receita',
-        category: 'Serviços de Barbearia',
-        amount: data.totalPrice,
-        date: data.date,
-        paymentMethod: data.paymentMethod,
-        description: `Agendamento ${data.customerName} (${data.serviceNames.join(', ')})`,
-        barberId: data.barberId,
-      };
-      setTransactions((prev) => [newTx, ...prev]);
-    }
+      // Fetch Services
+      const { data: sData, error: sErr } = await supabase.from('services').select('*').eq('active', true);
+      if (sErr) throw sErr;
+      
+      // Fetch Barbers
+      const { data: bData, error: bErr } = await supabase.from('barbers').select('*').eq('active', true);
+      if (bErr) throw bErr;
+      
+      // Fetch Appointments (For demo, fetch all. In prod, fetch future or recent)
+      const { data: aData, error: aErr } = await supabase.from('appointments').select(`
+        *,
+        customers ( name, phone ),
+        services ( name ),
+        barbers ( name )
+      `).order('appointment_date', { ascending: false }).order('appointment_time', { ascending: false });
+      if (aErr) throw aErr;
 
-    return newAppointment;
-  };
+      // Fetch Customers
+      const { data: cData, error: cErr } = await supabase.from('customers').select('*');
+      if (cErr) throw cErr;
 
-  const updateAppointmentStatus = (
-    id: string,
-    status: AppointmentStatus,
-    paymentStatus?: PaymentStatus
-  ) => {
-    setAppointments((prev) =>
-      prev.map((apt) => {
-        if (apt.id === id) {
-          const updated = {
-            ...apt,
-            status,
-            paymentStatus: paymentStatus !== undefined ? paymentStatus : apt.paymentStatus,
-          };
+      setServices(sData.map(s => ({
+        id: s.id,
+        name: s.name,
+        category: 'cabelo',
+        description: s.description || '',
+        price: Number(s.price),
+        durationMinutes: s.duration_minutes,
+        pointsReward: 0,
+      })));
 
-          // If transitioning to paid and was not paid, add revenue transaction
-          if (apt.paymentStatus !== 'pago' && paymentStatus === 'pago') {
-            const newTx: FinancialTransaction = {
-              id: `tx-${Date.now()}`,
-              appointmentId: apt.id,
-              type: 'receita',
-              category: 'Serviços de Barbearia',
-              amount: apt.totalPrice,
-              date: apt.date,
-              paymentMethod: apt.paymentMethod,
-              description: `Pagamento recebido: ${apt.customerName} (${apt.serviceNames.join(', ')})`,
-              barberId: apt.barberId,
-            };
-            setTransactions((txs) => [newTx, ...txs]);
-          }
-
-          return updated;
+      setBarbers([
+        ...bData.map(b => ({
+          id: b.id,
+          name: b.name,
+          role: b.description || 'Especialista',
+          avatarUrl: b.photo_url || '',
+          rating: 5,
+          reviewsCount: 0,
+          specialties: b.specialty ? [b.specialty] : [],
+          phone: '',
+          bio: b.description || '',
+          availableDays: [1,2,3,4,5,6],
+        })),
+        {
+          id: 'any',
+          name: 'Qualquer profissional',
+          role: 'Disponível',
+          avatarUrl: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=400&q=80',
+          rating: 5.0,
+          reviewsCount: 0,
+          specialties: [],
+          phone: '',
+          bio: '',
+          availableDays: [1,2,3,4,5,6]
         }
-        return apt;
-      })
-    );
-  };
+      ]);
 
-  const submitReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
-    const newReview: Review = {
-      ...reviewData,
-      id: `rev-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setReviews((prev) => [newReview, ...prev]);
+      setCustomers(cData.map(c => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        totalVisits: 0,
+        totalSpent: 0,
+        loyaltyStamps: 0,
+        loyaltyPoints: 0,
+        tier: 'Bronze'
+      })));
 
-    // Recalculate barber rating
-    setBarbers((prevBarbers) =>
-      prevBarbers.map((b) => {
-        if (b.id === reviewData.barberId) {
-          const barberReviews = reviews.filter((r) => r.barberId === b.id);
-          const totalScore = barberReviews.reduce((acc, r) => acc + r.rating, reviewData.rating);
-          const newCount = b.reviewsCount + 1;
-          const newAvg = Number((totalScore / (barberReviews.length + 1)).toFixed(2));
-          return {
-            ...b,
-            rating: newAvg,
-            reviewsCount: newCount,
-          };
-        }
-        return b;
-      })
-    );
+      setAppointments(aData.map(a => ({
+        id: a.id,
+        customerName: a.customers?.name || 'Cliente',
+        customerPhone: a.customers?.phone || '',
+        barberId: a.barber_id,
+        barberName: a.barbers?.name || '',
+        serviceIds: [a.service_id],
+        serviceNames: [a.services?.name || ''],
+        date: a.appointment_date,
+        time: a.appointment_time.substring(0,5),
+        totalPrice: Number(a.price),
+        totalDurationMinutes: a.duration_minutes,
+        paymentMethod: 'presencial',
+        paymentStatus: 'pendente',
+        status: a.status as any,
+        whatsappNotificationSent: false,
+        createdAt: a.created_at,
+        source: a.source || 'web'
+      })));
 
-    // If linked to appointment, mark ratingSubmitted
-    if (reviewData.appointmentId) {
-      setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === reviewData.appointmentId ? { ...apt, ratingSubmitted: true } : apt
-        )
-      );
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Erro ao carregar dados do servidor.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const addTransaction = (txData: Omit<FinancialTransaction, 'id'>) => {
-    const newTx: FinancialTransaction = {
-      ...txData,
-      id: `tx-${Date.now()}`,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-  };
-
-  const updateSalonConfig = (newConfig: Partial<SalonConfig>) => {
-    setSalonConfig((prev) => ({ ...prev, ...newConfig }));
-  };
-
-  const redeemLoyaltyReward = (rewardId: string, customerId: string): boolean => {
-    const reward = loyaltyRewards.find((r) => r.id === rewardId);
-    const customer = customers.find((c) => c.id === customerId);
-    if (!reward || !customer) return false;
-
-    if (reward.type === 'points') {
-      if (customer.loyaltyPoints < reward.pointsCost) return false;
-      const updated: Customer = {
-        ...customer,
-        loyaltyPoints: customer.loyaltyPoints - reward.pointsCost,
-      };
-      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? updated : c)));
-      if (currentCustomer && currentCustomer.id === customer.id) {
-        setCurrentCustomer(updated);
-      }
-      return true;
+  const createAppointment = async (apt: Partial<Appointment> & { customerName: string, customerPhone: string, source?: string }) => {
+    // 1. Find or create customer
+    let customerId = '';
+    
+    // Check if customer exists by phone
+    const { data: existingCust } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('phone', apt.customerPhone.replace(/\D/g, ''))
+      .single();
+      
+    if (existingCust) {
+      customerId = existingCust.id;
     } else {
-      // stamps
-      const required = reward.stampsRequired || 5;
-      if (customer.loyaltyStamps < required) return false;
-      const updated: Customer = {
-        ...customer,
-        loyaltyStamps: customer.loyaltyStamps - required,
-      };
-      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? updated : c)));
-      if (currentCustomer && currentCustomer.id === customer.id) {
-        setCurrentCustomer(updated);
-      }
-      return true;
+      const { data: newCust, error: custErr } = await supabase
+        .from('customers')
+        .insert({
+          name: apt.customerName,
+          phone: apt.customerPhone.replace(/\D/g, '')
+        })
+        .select('id')
+        .single();
+        
+      if (custErr) throw custErr;
+      customerId = newCust.id;
     }
-  };
 
-  const addCustomer = (
-    customerData: Omit<
-      Customer,
-      'id' | 'createdAt' | 'loyaltyPoints' | 'loyaltyStamps' | 'tier' | 'totalVisits' | 'totalSpent'
-    >
-  ): Customer => {
-    const newCustomer: Customer = {
-      ...customerData,
-      id: `cust-${Date.now()}`,
-      loyaltyPoints: 50, // Welcome gift points
-      loyaltyStamps: 0,
-      tier: 'Bronze',
-      totalVisits: 0,
-      totalSpent: 0,
-      createdAt: new Date().toISOString(),
-    };
-    setCustomers((prev) => [newCustomer, ...prev]);
-    return newCustomer;
-  };
-
-  const addService = (serviceData: Omit<Service, 'id'>) => {
-    const newService: Service = {
-      ...serviceData,
-      id: `srv-${Date.now()}`,
-    };
-    setServices((prev) => [...prev, newService]);
-  };
-
-  const updateService = (id: string, updatedFields: Partial<Service>) => {
-    setServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...updatedFields } : s)));
-  };
-
-  const deleteService = (id: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  const toggleLikePortfolio = (photoId: string) => {
-    setPortfolio((prev) =>
-      prev.map((item) => {
-        if (item.id === photoId) {
-          return { ...item, likesCount: item.likesCount + 1 };
-        }
-        return item;
-      })
-    );
-  };
-
-  const resetAllData = () => {
-    setServices(INITIAL_SERVICES);
-    setBarbers(INITIAL_BARBERS);
-    setAppointments(INITIAL_APPOINTMENTS);
-    setReviews(INITIAL_REVIEWS);
-    setCustomers(INITIAL_CUSTOMERS);
-    setLoyaltyRewards(INITIAL_LOYALTY_REWARDS);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setSalonConfig(INITIAL_SALON_CONFIG);
-    setPortfolio(INITIAL_PORTFOLIO);
-    setCurrentCustomer(INITIAL_CUSTOMERS[0]);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEY);
+    // 2. Double check availability
+    const { data: conflicts } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('barber_id', apt.barberId)
+      .eq('appointment_date', apt.date)
+      .eq('appointment_time', apt.time + ':00')
+      .neq('status', 'cancelled');
+      
+    if (conflicts && conflicts.length > 0) {
+      throw new Error('Esse horário acabou de ser reservado. Escolha outro horário.');
     }
+
+    // 3. Insert appointment
+    const { error: aptErr } = await supabase
+      .from('appointments')
+      .insert({
+        customer_id: customerId,
+        service_id: apt.serviceIds?.[0],
+        barber_id: apt.barberId,
+        appointment_date: apt.date,
+        appointment_time: apt.time + ':00',
+        status: 'confirmed',
+        source: apt.source || 'web',
+        price: apt.totalPrice,
+        duration_minutes: apt.totalDurationMinutes,
+      });
+
+    if (aptErr) throw aptErr;
+
+    // Refresh data
+    await fetchData();
+  };
+
+  const updateAppointmentStatus = async (id: string, status: 'confirmed' | 'completed' | 'cancelled') => {
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status })
+      .eq('id', id);
+      
+    if (error) throw error;
+    await fetchData();
   };
 
   return (
     <AppContext.Provider
       value={{
+        activeTab,
+        setActiveTab,
         services,
         barbers,
         appointments,
-        reviews,
         customers,
-        loyaltyRewards,
-        transactions,
         salonConfig,
-        portfolio,
         currentCustomer,
-        activeTab,
-        preselectedBarberId,
-        setActiveTab,
-        setPreselectedBarberId,
-        toggleLikePortfolio,
         setCurrentCustomer,
         createAppointment,
+        
         updateAppointmentStatus,
-        submitReview,
-        addTransaction,
-        updateSalonConfig,
-        redeemLoyaltyReward,
-        addCustomer,
-        addService,
-        updateService,
-        deleteService,
-        resetAllData,
+        addCustomer: () => {},
+        submitReview: () => {},
+        transactions: [],
+        updateSalonConfig: () => {},
+        addTransaction: () => {},
+        addService: () => {},
+        deleteService: () => {},
+        resetAllData: () => {},
+        portfolio: [],
+        toggleLikePortfolio: () => {},
+        setPreselectedBarberId: () => {},
+        loyaltyRewards: [],
+        redeemLoyaltyReward: () => {},
+        reviews: [],
+
+        isLoading,
+        error
       }}
     >
       {children}
@@ -446,8 +271,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
 };

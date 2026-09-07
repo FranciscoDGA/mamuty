@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Check,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
 export const BookingWizard: React.FC = () => {
@@ -22,27 +23,24 @@ export const BookingWizard: React.FC = () => {
     barbers,
     appointments,
     createAppointment,
-    setActiveTab,
+    isLoading,
+    error,
   } = useApp();
 
-  // Wizard Steps: 1 = Services, 2 = Barber, 3 = Date, 4 = Time, 5 = Client Details, 6 = Success
   const [step, setStep] = useState<number>(1);
-
-  // Selections
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
-  
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
   const [selectedTime, setSelectedTime] = useState<string>('');
-
-  // Customer state
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  // Next 7 dates generator
   const availableDates = useMemo(() => {
     const dates = [];
     const today = new Date();
@@ -59,7 +57,6 @@ export const BookingWizard: React.FC = () => {
     return dates;
   }, []);
 
-  // Time slots generator (08:00 to 19:00, 30 min intervals)
   const timeSlots = useMemo(() => {
     const slots = [];
     for (let h = 8; h <= 18; h++) {
@@ -69,54 +66,33 @@ export const BookingWizard: React.FC = () => {
     return slots;
   }, []);
 
-  // Calculate occupied slots
   const occupiedSlots = useMemo(() => {
     if (!selectedDate || !selectedService) return new Set<string>();
     
     const taken = new Set<string>();
     
-    // For each appointment on the selected date
-    appointments.forEach((apt) => {
-      if (apt.date === selectedDate && apt.status !== 'cancelado') {
-        // If "Any" professional is selected, we need to check if ALL professionals are busy. 
-        // For simplicity in MVP, if a specific barber is selected, check only them.
-        const matchesBarber = selectedBarber?.id === 'any' || apt.barberId === selectedBarber?.id;
-        
-        if (matchesBarber) {
-          // Block the appointment's start time, and subsequent slots based on duration
-          const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
-          const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
-          
-          timeSlots.forEach(slot => {
-            const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
-            // If this slot falls inside the appointment time
-            if (slotMinutes >= aptStartMinutes && slotMinutes < aptEndMinutes) {
-              taken.add(slot);
-            }
-            // Also, we must block slots if OUR selected service would overlap with an existing appointment
-            const myEndMinutes = slotMinutes + selectedService.durationMinutes;
-            if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
-              taken.add(slot);
-            }
-          });
-        }
+    timeSlots.forEach(slot => {
+      const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
+      const myEndMinutes = slotMinutes + selectedService.durationMinutes;
+      
+      // Lunch break rule: 12:00 to 13:00 is blocked. 
+      // Overlap logic: if the service starts before 13:00 and ends after 12:00, it's blocked.
+      const lunchStart = 12 * 60;
+      const lunchEnd = 13 * 60;
+      if (slotMinutes < lunchEnd && myEndMinutes > lunchStart) {
+        taken.add(slot);
+        return; // blocked by lunch, no need to check further
       }
-    });
-
-    // If 'any' barber is selected, a slot is only taken if ALL barbers are taken.
-    // For Sprint 1, let's just do a simple block if any barber is busy to avoid overbooking, or just let it be optimistic.
-    // Actually, if 'any', we should find at least one free barber.
-    if (selectedBarber?.id === 'any') {
-      const realBarbers = barbers.filter(b => b.id !== 'any');
-      timeSlots.forEach(slot => {
-        const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
-        const myEndMinutes = slotMinutes + selectedService.durationMinutes;
-        
+      
+      // If 'any' barber is selected, check if ALL barbers are busy
+      if (selectedBarber?.id === 'any') {
+        const realBarbers = barbers.filter(b => b.id !== 'any');
         let allBusy = true;
+        
         for (const rb of realBarbers) {
           let barberIsBusy = false;
           for (const apt of appointments) {
-            if (apt.date === selectedDate && apt.barberId === rb.id && apt.status !== 'cancelado') {
+            if (apt.date === selectedDate && apt.barberId === rb.id && apt.status !== 'cancelled') {
               const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
               const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
               if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
@@ -133,11 +109,21 @@ export const BookingWizard: React.FC = () => {
         
         if (allBusy) {
           taken.add(slot);
-        } else {
-          taken.delete(slot);
         }
-      });
-    }
+      } else {
+        // Specific barber
+        for (const apt of appointments) {
+          if (apt.date === selectedDate && apt.barberId === selectedBarber?.id && apt.status !== 'cancelled') {
+            const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
+            const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
+            if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
+              taken.add(slot);
+              break;
+            }
+          }
+        }
+      }
+    });
 
     return taken;
   }, [appointments, selectedDate, selectedBarber, timeSlots, selectedService, barbers]);
@@ -145,56 +131,61 @@ export const BookingWizard: React.FC = () => {
   const handleNextStep = () => setStep((s) => s + 1);
   const handlePrevStep = () => setStep((s) => s - 1);
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!selectedBarber || !selectedService || !selectedDate || !selectedTime || !customerName || !customerPhone) {
-      alert('Por favor, preencha todos os dados.');
+      setSubmitError('Por favor, preencha todos os dados.');
       return;
     }
 
-    // If 'any' barber, pick the first available
-    let finalBarber = selectedBarber;
-    if (selectedBarber.id === 'any') {
-       const realBarbers = barbers.filter(b => b.id !== 'any');
-       const slotMinutes = parseInt(selectedTime.split(':')[0]) * 60 + parseInt(selectedTime.split(':')[1]);
-       const myEndMinutes = slotMinutes + selectedService.durationMinutes;
-       
-       for (const rb of realBarbers) {
-          let barberIsBusy = false;
-          for (const apt of appointments) {
-            if (apt.date === selectedDate && apt.barberId === rb.id && apt.status !== 'cancelado') {
-              const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
-              const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
-              if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
-                barberIsBusy = true;
-                break;
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      let finalBarber = selectedBarber;
+      if (selectedBarber.id === 'any') {
+         const realBarbers = barbers.filter(b => b.id !== 'any');
+         const slotMinutes = parseInt(selectedTime.split(':')[0]) * 60 + parseInt(selectedTime.split(':')[1]);
+         const myEndMinutes = slotMinutes + selectedService.durationMinutes;
+         
+         for (const rb of realBarbers) {
+            let barberIsBusy = false;
+            for (const apt of appointments) {
+              if (apt.date === selectedDate && apt.barberId === rb.id && apt.status !== 'cancelled') {
+                const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
+                const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
+                if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
+                  barberIsBusy = true;
+                  break;
+                }
               }
             }
-          }
-          if (!barberIsBusy) {
-            finalBarber = rb;
-            break;
-          }
-       }
+            if (!barberIsBusy) {
+              finalBarber = rb;
+              break;
+            }
+         }
+      }
+
+      await createAppointment({
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        barberId: finalBarber.id,
+        barberName: finalBarber.name,
+        serviceIds: [selectedService.id],
+        serviceNames: [selectedService.name],
+        date: selectedDate,
+        time: selectedTime,
+        totalPrice: selectedService.price,
+        totalDurationMinutes: selectedService.durationMinutes,
+        source: 'web'
+      });
+      
+      setStep(6);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Erro ao salvar agendamento.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    createAppointment({
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      barberId: finalBarber.id,
-      barberName: finalBarber.name,
-      serviceIds: [selectedService.id],
-      serviceNames: [selectedService.name],
-      date: selectedDate,
-      time: selectedTime,
-      totalPrice: selectedService.price,
-      totalDurationMinutes: selectedService.durationMinutes,
-      paymentMethod: 'no_local',
-      paymentStatus: 'pendente',
-      status: 'confirmado',
-      whatsappNotificationSent: false
-    });
-
-    setStep(6);
   };
 
   const stepsList = [
@@ -205,9 +196,28 @@ export const BookingWizard: React.FC = () => {
     { id: 5, label: 'Dados', icon: CheckCircle2 }
   ];
 
+  if (error) {
+    return (
+      <div className="max-w-3xl mx-auto p-6 bg-rose-950/30 border border-rose-900 rounded-3xl text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+        <h2 className="text-xl font-bold text-white">Ops, algo deu errado.</h2>
+        <p className="text-slate-300">{error}</p>
+        <p className="text-sm text-slate-400">Verifique sua configuração do Supabase e tente novamente.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+        <p className="text-slate-400">Carregando disponibilidade...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Home State (Step 0 essentially, but we integrate it in Step 1 or a top banner) */}
       <div className="mb-6 flex flex-col items-center justify-center text-center space-y-3 bg-slate-900/60 p-6 rounded-3xl border border-slate-800">
         <h1 className="text-3xl font-extrabold text-slate-100">Agende seu Horário</h1>
         <p className="text-slate-400 text-sm max-w-md">Bem-vindo à Mamuty. Escolha o serviço desejado e reserve seu horário em poucos passos.</p>
@@ -235,7 +245,6 @@ export const BookingWizard: React.FC = () => {
         </div>
       )}
 
-      {/* Step 1: Servico */}
       {step === 1 && (
         <div className="space-y-4 animate-in fade-in">
           <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -265,20 +274,14 @@ export const BookingWizard: React.FC = () => {
               </button>
             ))}
           </div>
-          
           <div className="pt-4 flex justify-end">
-            <button
-              onClick={handleNextStep}
-              disabled={!selectedService}
-              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:hover:bg-amber-500 text-slate-950 font-bold flex items-center gap-2 transition"
-            >
+            <button onClick={handleNextStep} disabled={!selectedService} className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold flex items-center gap-2">
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Profissional */}
       {step === 2 && (
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -297,7 +300,7 @@ export const BookingWizard: React.FC = () => {
                 }`}
               >
                 <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-700">
-                  <Image src={barber.avatarUrl} alt={barber.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                  <Image src={barber.avatarUrl || 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=400&q=80'} alt={barber.name} fill className="object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <span className="font-bold text-sm text-slate-100 block">{barber.name}</span>
@@ -307,7 +310,6 @@ export const BookingWizard: React.FC = () => {
               </button>
             ))}
           </div>
-
           <div className="pt-4 flex justify-between">
             <button onClick={handlePrevStep} className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center gap-2">
               <ChevronLeft className="w-4 h-4" /> Voltar
@@ -319,14 +321,12 @@ export const BookingWizard: React.FC = () => {
         </div>
       )}
 
-      {/* Step 3: Data */}
       {step === 3 && (
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-amber-500" />
             Para qual dia?
           </h2>
-          
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {availableDates.map((date) => (
               <button
@@ -345,7 +345,6 @@ export const BookingWizard: React.FC = () => {
               </button>
             ))}
           </div>
-
           <div className="pt-4 flex justify-between">
             <button onClick={handlePrevStep} className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center gap-2">
               <ChevronLeft className="w-4 h-4" /> Voltar
@@ -357,14 +356,12 @@ export const BookingWizard: React.FC = () => {
         </div>
       )}
 
-      {/* Step 4: Horário */}
       {step === 4 && (
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-500" />
             Qual o melhor horário?
           </h2>
-
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {timeSlots.map(slot => {
               const isOccupied = occupiedSlots.has(slot);
@@ -384,7 +381,6 @@ export const BookingWizard: React.FC = () => {
               );
             })}
           </div>
-
           <div className="pt-4 flex justify-between">
             <button onClick={handlePrevStep} className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center gap-2">
               <ChevronLeft className="w-4 h-4" /> Voltar
@@ -396,14 +392,18 @@ export const BookingWizard: React.FC = () => {
         </div>
       )}
 
-      {/* Step 5: Dados do Cliente */}
       {step === 5 && (
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-amber-500" />
             Seus Dados
           </h2>
-
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-900 text-rose-400 text-sm flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              {submitError}
+            </div>
+          )}
           <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-400 mb-1.5 block">Nome Completo</label>
@@ -426,7 +426,6 @@ export const BookingWizard: React.FC = () => {
               />
             </div>
           </div>
-
           <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-3">
              <h3 className="font-bold text-slate-100 text-sm border-b border-slate-800 pb-2">Seu Agendamento</h3>
              <p className="text-sm flex justify-between"><span className="text-slate-400">Serviço</span> <span className="font-bold text-amber-400">{selectedService?.name}</span></p>
@@ -435,19 +434,17 @@ export const BookingWizard: React.FC = () => {
              <p className="text-sm flex justify-between"><span className="text-slate-400">Horário</span> <span className="font-bold text-white">{selectedTime}</span></p>
              <p className="text-sm flex justify-between border-t border-slate-800 pt-2"><span className="text-slate-400">Valor total</span> <span className="font-bold text-emerald-400">R$ {selectedService?.price}</span></p>
           </div>
-
           <div className="pt-4 flex justify-between">
             <button onClick={handlePrevStep} className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center gap-2">
               <ChevronLeft className="w-4 h-4" /> Voltar
             </button>
-            <button onClick={handleConfirmBooking} disabled={!customerName || !customerPhone} className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold flex items-center gap-2">
-              Confirmar Agendamento <Check className="w-4 h-4" />
+            <button onClick={handleConfirmBooking} disabled={!customerName || !customerPhone || isSubmitting} className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold flex items-center gap-2">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar Agendamento'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 6: Sucesso */}
       {step === 6 && (
         <div className="bg-slate-900/80 border border-emerald-500/30 rounded-3xl p-8 text-center space-y-5 animate-in zoom-in-95">
           <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -462,13 +459,6 @@ export const BookingWizard: React.FC = () => {
              <p className="text-sm flex justify-between"><span className="text-slate-400">Data</span> <span className="font-bold text-white">{selectedDate?.split('-').reverse().join('/')}</span></p>
              <p className="text-sm flex justify-between"><span className="text-slate-400">Horário</span> <span className="font-bold text-white">{selectedTime}</span></p>
              <p className="text-sm flex justify-between"><span className="text-slate-400">Valor</span> <span className="font-bold text-emerald-400">R$ {selectedService?.price}</span></p>
-          </div>
-
-          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3 text-left">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-400/90 leading-relaxed">
-              Em breve, a Mamuty poderá enviar a confirmação e os lembretes diretamente pelo WhatsApp. (Demonstração: Nenhum WhatsApp real foi enviado).
-            </p>
           </div>
 
           <div className="pt-4">

@@ -45,16 +45,16 @@ export const MyAppointments: React.FC<{ onOpenReviewModal?: (apt: Appointment) =
   }, [appointments, customerPhoneClean, searchFilter]);
 
   const upcomingAppointments = useMemo(() => {
-    return relevantAppointments.filter((a) => a.status === 'confirmado' || a.status === 'em_andamento');
+    return relevantAppointments.filter((a) => a.status === 'confirmed' || a.status === 'em_andamento');
   }, [relevantAppointments]);
 
   const pastAppointments = useMemo(() => {
-    return relevantAppointments.filter((a) => a.status === 'concluido' || a.status === 'cancelado');
+    return relevantAppointments.filter((a) => a.status === 'completed' || a.status === 'cancelled');
   }, [relevantAppointments]);
 
   const handleCancelAppointment = (id: string) => {
     if (confirm('Deseja realmente cancelar este agendamento na Barbearia Mamuty?')) {
-      updateAppointmentStatus(id, 'cancelado');
+      updateAppointmentStatus(id, 'cancelled');
     }
   };
 
@@ -245,12 +245,12 @@ export const MyAppointments: React.FC<{ onOpenReviewModal?: (apt: Appointment) =
                     <span className="font-bold text-slate-300">{apt.serviceNames.join(', ')}</span>
                     <span
                       className={`text-[9px] font-bold px-1.5 py-0.2 rounded-sm ${
-                        apt.status === 'concluido'
+                        apt.status === 'completed'
                           ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                           : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                       }`}
                     >
-                      {apt.status === 'concluido' ? 'Concluído' : 'Cancelado'}
+                      {apt.status === 'completed' ? 'Concluído' : 'Cancelado'}
                     </span>
                   </div>
                   <p className="text-slate-500 text-[11px] mt-0.5">
@@ -259,7 +259,7 @@ export const MyAppointments: React.FC<{ onOpenReviewModal?: (apt: Appointment) =
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {apt.status === 'concluido' && !apt.ratingSubmitted && onOpenReviewModal && (
+                  {apt.status === 'completed' && !apt.ratingSubmitted && onOpenReviewModal && (
                     <button
                       onClick={() => onOpenReviewModal(apt)}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 font-semibold hover:bg-amber-500/25 transition"

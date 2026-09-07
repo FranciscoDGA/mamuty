@@ -26,7 +26,7 @@ export interface Barber {
 
 export type PaymentMethod = 'pix' | 'cartao' | 'presencial';
 export type PaymentStatus = 'pendente' | 'pago' | 'no_local';
-export type AppointmentStatus = 'confirmado' | 'em_andamento' | 'concluido' | 'cancelado';
+export type AppointmentStatus = 'confirmed' | 'em_andamento' | 'completed' | 'cancelled';
 
 export interface Appointment {
   id: string;
@@ -47,6 +47,7 @@ export interface Appointment {
   notes?: string;
   whatsappNotificationSent: boolean;
   createdAt: string;
+  source?: string;
   pixPayload?: string;
   ratingSubmitted?: boolean;
 }

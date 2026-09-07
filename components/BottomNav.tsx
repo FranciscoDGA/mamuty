@@ -9,7 +9,7 @@ export const BottomNav: React.FC = () => {
 
   const upcomingCount = appointments.filter(
     (a) =>
-      a.status === 'confirmado' &&
+      a.status === 'confirmed' &&
       currentCustomer &&
       a.customerPhone.replace(/\D/g, '') === currentCustomer.phone.replace(/\D/g, '')
   ).length;

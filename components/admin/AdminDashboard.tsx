@@ -528,9 +528,9 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-xs text-slate-400">({apt.customerPhone})</span>
                         <span
                           className={`text-[9px] font-bold px-2 py-0.2 rounded-full uppercase ${
-                            apt.status === 'confirmado'
+                            apt.status === 'confirmed'
                               ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                              : apt.status === 'concluido'
+                              : apt.status === 'completed'
                               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                               : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                           }`}
@@ -566,20 +566,20 @@ export const AdminDashboard: React.FC = () => {
                       <MessageSquare className="w-4 h-4" />
                     </button>
 
-                    {apt.status === 'confirmado' && (
+                    {apt.status === 'confirmed' && (
                       <button
-                        onClick={() => updateAppointmentStatus(apt.id, 'concluido', 'pago')}
+                        onClick={() => updateAppointmentStatus(apt.id, 'completed')}
                         className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
                       >
                         Concluir Atendimento
                       </button>
                     )}
 
-                    {apt.status !== 'cancelado' && (
+                    {apt.status !== 'cancelled' && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm('Cancelar este agendamento?')) {
-                            updateAppointmentStatus(apt.id, 'cancelado');
+                            await updateAppointmentStatus(apt.id, 'cancelled');
                           }
                         }}
                         className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-400 text-xs transition"
