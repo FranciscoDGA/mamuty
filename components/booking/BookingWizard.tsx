@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 import { Barber, Service } from '@/lib/types';
+import Link from 'next/link';
 import {
   Scissors,
   User,
@@ -14,7 +15,8 @@ import {
   ChevronLeft,
   Check,
   AlertCircle,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 
 export const BookingWizard: React.FC = () => {
@@ -229,7 +231,16 @@ export const BookingWizard: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="mb-6 flex flex-col items-center justify-center text-center space-y-3 bg-slate-900/60 p-6 rounded-3xl border border-slate-800">
         <h1 className="text-3xl font-extrabold text-slate-100">Agende seu Horário</h1>
-        <p className="text-slate-400 text-sm max-w-md">Bem-vindo à Mamuty. Escolha o serviço desejado e reserve seu horário em poucos passos.</p>
+        <p className="text-slate-400 text-sm max-w-md">
+          Bem-vindo à Mamuty. Agende em poucos passos abaixo ou converse diretamente com nosso assistente no WhatsApp.
+        </p>
+        <Link
+          href="/whatsapp"
+          className="mt-1 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-95"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span>Falar com Assistente no WhatsApp &rarr;</span>
+        </Link>
       </div>
 
       {step < 6 && (

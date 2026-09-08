@@ -3,7 +3,22 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { ChevronLeft, Send, CheckCheck, Loader2, Scissors } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  Send, 
+  CheckCheck, 
+  Loader2, 
+  Scissors, 
+  Mic, 
+  MicOff, 
+  Sparkles, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  User, 
+  X,
+  PhoneCall
+} from 'lucide-react';
 import { Barber, Service } from '@/lib/types';
 
 type Message = {
@@ -12,26 +27,28 @@ type Message = {
   text: string | React.ReactNode;
   options?: { label: string; action: () => void }[];
   time: string;
+  isAudio?: boolean;
 };
 
 export default function WhatsAppDemo() {
-  const { services, barbers, appointments, createAppointment, salonConfig, isLoading, error } = useApp();
+  const { services, barbers, appointments, createAppointment, salonConfig } = useApp();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Flow State
-  const [flowState, setFlowState] = useState<'idle' | 'booking_service' | 'booking_barber' | 'booking_date' | 'booking_time' | 'booking_name' | 'booking_phone' | 'booking_confirm' | 'cancelling'>('idle');
-  
-  // Booking Data
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [customerName, setCustomerName] = useState<string>('');
-  
+  // Quick Action Chips
+  const quickChips = [
+    'Quais os preços dos serviços?',
+    'Tem vaga para hoje?',
+    'Quem são os barbeiros?',
+    'Qual o endereço da barbearia?'
+  ];
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -40,362 +57,125 @@ export default function WhatsAppDemo() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const addBotMessage = (text: string | React.ReactNode, options?: { label: string; action: () => void }[]) => {
-    setIsTyping(true);
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
+  // Initial welcome message
+  useEffect(() => {
+    const welcomeTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages([
+      {
+        id: 'welcome-1',
         sender: 'bot',
-        text,
-        options,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-      setIsTyping(false);
-    }, 1000);
-  };
+        text: `Fala, tudo bem? Bem-vindo ao WhatsApp da *Mamuty Barbearia*! 💈✂️\n\nSou o assistente digital da barbearia. Como posso te ajudar hoje?\n\n• Agendar um horário\n• Preços e serviços\n• Barbeiros disponíveis\n• Endereço e horários`,
+        time: welcomeTime,
+        options: [
+          { label: '💈 Ver serviços e preços', action: () => handleSendText('Quais os preços dos serviços?') },
+          { label: '🕒 Tem vaga hoje?', action: () => handleSendText('Tem vaga para hoje?') },
+          { label: '✂️ Agendar horário agora', action: () => handleSendText('Quero agendar um corte') }
+        ]
+      }
+    ]);
+  }, []);
 
-  const addUserMessage = (text: string) => {
+  const addBotMessage = (text: string | React.ReactNode, options?: { label: string; action: () => void }[]) => {
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
-      sender: 'user',
+      sender: 'bot',
       text,
+      options,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }]);
   };
 
-  // Dates and Time slots
-  const availableDates = useMemo(() => {
-    const dates = [];
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      const iso = d.toISOString().split('T')[0];
-      const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' });
-      const dayNum = d.getDate();
-      const isSunday = d.getDay() === 0;
-      if (!isSunday) dates.push({ iso, label: i === 0 ? 'Hoje' : i === 1 ? 'Amanhã' : `${dayName}, ${dayNum}` });
-    }
-    return dates;
-  }, []);
+  const handleSendText = async (textToSend?: string) => {
+    const messageContent = (textToSend || inputText).trim();
+    if (!messageContent) return;
 
-  const timeSlots = useMemo(() => {
-    const slots = [];
-    for (let h = 8; h <= 18; h++) {
-      slots.push(`${h.toString().padStart(2, '0')}:00`);
-      slots.push(`${h.toString().padStart(2, '0')}:30`);
-    }
-    return slots;
-  }, []);
+    if (!textToSend) setInputText('');
 
-  const getAvailableTimes = (date: string, barber: Barber, service: Service) => {
-    const taken = new Set<string>();
-    timeSlots.forEach(slot => {
-      const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
-      const myEndMinutes = slotMinutes + service.durationMinutes;
-      
-      const lunchStart = 12 * 60;
-      const lunchEnd = 13 * 60;
-      if (slotMinutes < lunchEnd && myEndMinutes > lunchStart) {
-        taken.add(slot);
-        return;
-      }
-      
-      if (barber.id === 'any') {
-        const realBarbers = barbers.filter(b => b.id !== 'any');
-        let allBusy = true;
-        for (const rb of realBarbers) {
-          let barberIsBusy = false;
-          for (const apt of appointments) {
-            if (apt.date === date && apt.barberId === rb.id && apt.status !== 'cancelled') {
-              const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
-              const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
-              if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
-                barberIsBusy = true;
-                break;
-              }
-            }
-          }
-          if (!barberIsBusy) {
-            allBusy = false;
-            break;
-          }
-        }
-        if (allBusy) taken.add(slot);
-      } else {
-        for (const apt of appointments) {
-          if (apt.date === date && apt.barberId === barber.id && apt.status !== 'cancelled') {
-            const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
-            const aptEndMinutes = aptStartMinutes + apt.totalDurationMinutes;
-            if (slotMinutes < aptEndMinutes && myEndMinutes > aptStartMinutes) {
-              taken.add(slot);
-              break;
-            }
-          }
-        }
-      }
-    });
-    return timeSlots.filter(s => !taken.has(s));
-  };
-
-  // Initialization
-  useEffect(() => {
-    if (messages.length === 0 && !isLoading && !error) {
-      addBotMessage(
-        <>
-          Olá! 👋<br/>
-          Sim, estamos funcionando hoje.<br/><br/>
-          Nosso horário de atendimento é das 08:00 às 19:00.<br/>
-          Posso verificar os horários disponíveis para você.
-        </>,
-        [
-          { label: '✂️ Agendar horário', action: () => startBookingFlow() },
-          { label: '💈 Ver serviços', action: () => showServices() },
-          { label: '📍 Como chegar', action: () => showLocation() }
-        ]
-      );
-    }
-  }, [isLoading, error]);
-
-  const startBookingFlow = () => {
-    addUserMessage('Agendar horário');
-    setFlowState('booking_service');
-    addBotMessage('Qual serviço você deseja agendar?', 
-      services.map(s => ({
-        label: `${s.name} — R$ ${s.price} — ${s.durationMinutes} min`,
-        action: () => handleSelectService(s)
-      }))
-    );
-  };
-
-  const handleSelectService = (s: Service) => {
-    addUserMessage(s.name);
-    setSelectedService(s);
-    setFlowState('booking_barber');
-    addBotMessage('Perfeito! 👌\nCom quem você gostaria de fazer?',
-      barbers.map(b => ({
-        label: b.id === 'any' ? 'Qualquer profissional' : b.name,
-        action: () => handleSelectBarber(b, s)
-      }))
-    );
-  };
-
-  const handleSelectBarber = (b: Barber, s: Service) => {
-    addUserMessage(b.id === 'any' ? 'Qualquer profissional' : b.name);
-    setSelectedBarber(b);
-    setFlowState('booking_date');
-    addBotMessage('Para qual dia você gostaria?',
-      availableDates.map(d => ({
-        label: d.label,
-        action: () => handleSelectDate(d.iso, b, s)
-      }))
-    );
-  };
-
-  const handleSelectDate = (date: string, b: Barber, s: Service) => {
-    addUserMessage(date.split('-').reverse().join('/'));
-    setSelectedDate(date);
-    setFlowState('booking_time');
+    const userMsgTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    const times = getAvailableTimes(date, b, s);
-    if (times.length === 0) {
-      addBotMessage('Poxa, não temos mais horários para este dia. Escolha outra data:',
-        availableDates.map(d => ({
-          label: d.label,
-          action: () => handleSelectDate(d.iso, b, s)
-        }))
-      );
-    } else {
-      addBotMessage('Esses são os horários disponíveis:',
-        times.map(t => ({
-          label: t,
-          action: () => handleSelectTime(t, date, b, s)
-        }))
-      );
-    }
-  };
+    // Add user message immediately
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: messageContent,
+      time: userMsgTime
+    }]);
 
-  const handleSelectTime = (time: string, date: string, b: Barber, s: Service) => {
-    // Conflict check right before selecting
-    const currentAvailable = getAvailableTimes(date, b, s);
-    if (!currentAvailable.includes(time)) {
-      addUserMessage(time);
-      addBotMessage('⚠️ Esse horário acabou de ser reservado.\nVou verificar outros horários disponíveis para você:',
-        currentAvailable.map(t => ({
-          label: t,
-          action: () => handleSelectTime(t, date, b, s)
-        }))
-      );
-      return;
-    }
-
-    addUserMessage(time);
-    setSelectedTime(time);
-    setFlowState('booking_name');
-    addBotMessage('Perfeito! 👍\nVou reservar esse horário para você.\n\nPara confirmar seu horário, qual é o seu nome?');
-  };
-
-  const handleInputSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    
-    const text = inputText.trim();
-    addUserMessage(text);
-    setInputText('');
-
-    if (flowState === 'booking_name') {
-      setCustomerName(text);
-      setFlowState('booking_phone');
-      addBotMessage('E qual é o seu número de WhatsApp? (Ex: 11999999999)');
-    } else if (flowState === 'booking_phone') {
-      // Show confirmation
-      setFlowState('booking_confirm');
-      addBotMessage(
-        <>
-          Confira seu agendamento:<br/><br/>
-          ✂️ <b>Serviço:</b> {selectedService?.name}<br/>
-          👤 <b>Profissional:</b> {selectedBarber?.id === 'any' ? 'Qualquer' : selectedBarber?.name}<br/>
-          📅 <b>Data:</b> {selectedDate.split('-').reverse().join('/')}<br/>
-          ⏰ <b>Horário:</b> {selectedTime}<br/>
-          💰 <b>Valor:</b> R$ {selectedService?.price}
-        </>,
-        [
-          { label: '✅ Confirmar agendamento', action: () => finalizeBooking(text) },
-          { label: '↩️ Cancelar', action: () => {
-             setFlowState('idle');
-             addBotMessage('Agendamento cancelado. Como posso ajudar?');
-          }}
-        ]
-      );
-    } else {
-      // General Intent Matcher
-      handleIntent(text.toLowerCase());
-    }
-  };
-
-  const finalizeBooking = async (phone: string) => {
-    addUserMessage('Confirmar agendamento');
     setIsTyping(true);
-    
-    try {
-      let finalBarber = selectedBarber!;
-      if (finalBarber.id === 'any') {
-         const realBarbers = barbers.filter(b => b.id !== 'any');
-         const currentAvailable = getAvailableTimes(selectedDate, finalBarber, selectedService!);
-         if (!currentAvailable.includes(selectedTime)) {
-            throw new Error('conflict');
-         }
-         // Pick the specific barber
-         for (const rb of realBarbers) {
-            const rbAvail = getAvailableTimes(selectedDate, rb, selectedService!);
-            if (rbAvail.includes(selectedTime)) {
-              finalBarber = rb;
-              break;
-            }
-         }
-      }
 
-      await createAppointment({
-        customerName: customerName,
-        customerPhone: phone,
-        barberId: finalBarber.id,
-        barberName: finalBarber.name,
-        serviceIds: [selectedService!.id],
-        serviceNames: [selectedService!.name],
-        date: selectedDate,
-        time: selectedTime,
-        totalPrice: selectedService!.price,
-        totalDurationMinutes: selectedService!.durationMinutes,
-        source: 'whatsapp'
+    try {
+      // Call AI Chat API
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            ...messages.map(m => ({
+              role: m.sender === 'user' ? 'user' : 'assistant',
+              content: typeof m.text === 'string' ? m.text : 'Mensagem'
+            })),
+            { role: 'user', content: messageContent }
+          ]
+        })
       });
 
-      addBotMessage(
-        <>
-          ✅ <b>Agendamento confirmado!</b><br/><br/>
-          Seu horário foi reservado com sucesso.<br/>
-          <b>{selectedService?.name}</b><br/>
-          {finalBarber.name}<br/>
-          {selectedDate.split('-').reverse().join('/')} às {selectedTime}<br/>
-          Valor: R$ {selectedService?.price}<br/><br/>
-          Estamos esperando você! 💈
-        </>
-      );
-      setFlowState('idle');
-    } catch (err: any) {
-      if (err.message === 'conflict' || err.message.includes('reservado')) {
-        addBotMessage('⚠️ Esse horário acabou de ser reservado.\nVou verificar outros horários disponíveis para você:',
-          getAvailableTimes(selectedDate, selectedBarber!, selectedService!).map(t => ({
-            label: t,
-            action: () => handleSelectTime(t, selectedDate, selectedBarber!, selectedService!)
-          }))
-        );
-      } else {
-        addBotMessage('Ocorreu um erro ao salvar o agendamento. Tente novamente.');
-      }
-    } finally {
+      const data = await res.json();
       setIsTyping(false);
-    }
-  };
 
-  const handleIntent = (text: string) => {
-    if (text.includes('vaga') || text.includes('horário') || text.includes('aberto')) {
-      const now = new Date();
-      const hour = now.getHours();
-      if (hour >= 8 && hour < 19 && now.getDay() !== 0) {
-        addBotMessage('Sim! Estamos funcionando agora. 💈\nQuer verificar horários?', [
-          { label: 'Agendar horário', action: () => startBookingFlow() }
-        ]);
+      if (data && data.reply) {
+        const dynamicOptions = data.options?.map((opt: any) => ({
+          label: opt.label,
+          action: () => handleSendText(opt.text)
+        }));
+
+        addBotMessage(data.reply, dynamicOptions);
       } else {
-        addBotMessage('No momento estamos fechados.\nNosso próximo horário de atendimento é amanhã às 08:00.', [
-          { label: 'Agendar para amanhã', action: () => startBookingFlow() }
-        ]);
+        addBotMessage('Opa! Como posso ajudar você a agendar na Mamuty?');
       }
-    } else if (text.includes('corte') || text.includes('serviço') || text.includes('preço') || text.includes('custa')) {
-      showServices();
-    } else if (text.includes('onde') || text.includes('local') || text.includes('endereço')) {
-      showLocation();
-    } else if (text.includes('cancelar')) {
-      setFlowState('cancelling');
-      addBotMessage('Qual é o seu número de WhatsApp para eu localizar os agendamentos?');
-    } else {
-      addBotMessage('Não entendi muito bem. Você gostaria de:', [
-        { label: 'Agendar horário', action: () => startBookingFlow() },
-        { label: 'Ver serviços', action: () => showServices() }
-      ]);
+    } catch (err) {
+      setIsTyping(false);
+      addBotMessage('Tive uma oscilação na conexão, mas você pode me dizer qual serviço e horário deseja agendar!');
     }
   };
 
-  const showServices = () => {
-    addBotMessage(
-      <>
-        Aqui estão nossos serviços:<br/>
-        {services.map(s => `\n✂️ ${s.name} - R$ ${s.price} (${s.durationMinutes}m)`)}
-        <br/><br/>Quer agendar?
-      </>,
-      [{ label: 'Agendar horário', action: () => startBookingFlow() }]
-    );
+  // Audio Recording Simulation
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      // Finish recording and send simulated audio message
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      setRecordingSeconds(0);
+
+      const userMsgTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        sender: 'user',
+        text: '🎤 Mensagem de áudio enviada: "Opa, tudo bom? Gostaria de saber se tem horário para corte hoje à tarde com o João!"',
+        time: userMsgTime,
+        isAudio: true
+      }]);
+
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        addBotMessage(
+          'Recebi seu áudio! 🎧\n\nO João tem horários disponíveis hoje sim! Temos vagas às *15:30*, *17:00* e *18:30*. Qual desses horários fica melhor pra você?',
+          [
+            { label: 'Hoje às 15:30 com João', action: () => handleSendText('Quero agendar hoje às 15:30 com o João') },
+            { label: 'Hoje às 17:00 com João', action: () => handleSendText('Quero agendar hoje às 17:00 com o João') },
+            { label: 'Hoje às 18:30 com João', action: () => handleSendText('Quero agendar hoje às 18:30 com o João') }
+          ]
+        );
+      }, 1500);
+    } else {
+      // Start recording
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+    }
   };
-
-  const showLocation = () => {
-    addBotMessage(
-      <>
-        📍 Estamos na:<br/>
-        <b>{salonConfig.address}</b><br/><br/>
-        Posso ajudar você a encontrar um horário?
-      </>,
-      [{ label: 'Agendar horário', action: () => startBookingFlow() }]
-    );
-  };
-
-
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#ece5dd] flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#070a12] md:bg-slate-900 flex flex-col md:py-6 items-center">
@@ -408,59 +188,85 @@ export default function WhatsAppDemo() {
           <ChevronLeft className="w-4 h-4" />
           <span>Voltar para o Início</span>
         </Link>
-        <span className="text-[11px] text-slate-400">Simulador WhatsApp</span>
+        <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5" /> Assistente IA Ativo
+        </span>
       </div>
 
       {/* Phone Mockup Container */}
-      <div className="w-full h-screen md:h-[800px] max-h-screen md:max-w-md bg-[#efeae2] md:rounded-[2.5rem] md:shadow-2xl overflow-hidden flex flex-col relative md:border-[8px] border-slate-800">
+      <div className="w-full h-screen md:h-[820px] max-h-screen md:max-w-md bg-[#efeae2] md:rounded-[2.5rem] md:shadow-2xl overflow-hidden flex flex-col relative md:border-[8px] border-slate-800">
         
-        {/* Header */}
-        <div className="bg-[#008069] text-white p-3 flex items-center justify-between z-10 shadow-md">
+        {/* WhatsApp Header */}
+        <div className="bg-[#008069] text-white p-3 flex items-center justify-between z-10 shadow-md shrink-0">
           <div className="flex items-center gap-2.5">
             <Link 
               href="/" 
-              className="p-1.5 -ml-1 rounded-full hover:bg-black/10 transition flex items-center gap-1"
+              className="p-1 -ml-1 rounded-full hover:bg-black/10 transition"
               title="Voltar ao Início"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-6 h-6" />
             </Link>
-            <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">
+            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-white/20">
                <div className="w-full h-full bg-amber-500 flex items-center justify-center">
-                 <Scissors className="w-4 h-4 text-slate-900" />
+                 <Scissors className="w-5 h-5 text-slate-900" />
                </div>
             </div>
             <div>
-              <h1 className="font-bold text-sm leading-tight">Mamuty Barbearia</h1>
-              <p className="text-[10px] text-white/80">Atendimento automático</p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-bold text-sm leading-tight">Mamuty Barbearia</h1>
+                <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              </div>
+              <p className="text-[10px] text-white/80">Online &bull; Atendente de IA</p>
             </div>
           </div>
 
           <Link
             href="/"
-            className="text-xs bg-black/20 hover:bg-black/30 text-white px-2.5 py-1 rounded-lg transition font-semibold"
+            className="text-xs bg-black/20 hover:bg-black/30 text-white px-3 py-1 rounded-lg transition font-semibold"
           >
             Fechar ✕
           </Link>
         </div>
 
-        {/* Chat Area */}
+        {/* Quick Suggestion Chips on Top of Chat */}
+        <div className="bg-slate-100/90 border-b border-slate-200/80 p-2 overflow-x-auto scrollbar-none flex items-center gap-1.5 shrink-0">
+          {quickChips.map((chip, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleSendText(chip)}
+              className="text-[11px] whitespace-nowrap bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-300 rounded-full px-3 py-1 shadow-xs transition active:scale-95"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+
+        {/* Chat Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat opacity-95">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] rounded-lg p-2 text-sm shadow-sm relative ${
+              <div className={`max-w-[85%] rounded-2xl p-3 text-xs sm:text-sm shadow-sm relative ${
                 msg.sender === 'user' 
                   ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' 
                   : 'bg-white text-slate-800 rounded-tl-none'
               }`}>
-                <div className="pr-12 pb-1 whitespace-pre-wrap">{msg.text}</div>
+                {msg.isAudio ? (
+                  <div className="flex items-center gap-2 text-emerald-800 font-medium">
+                    <Mic className="w-4 h-4 text-emerald-600" />
+                    <span>{msg.text}</span>
+                  </div>
+                ) : (
+                  <div className="pr-12 pb-1 whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                )}
                 
+                {/* Action options buttons */}
                 {msg.options && (
-                  <div className="mt-2 space-y-1.5 flex flex-col border-t border-slate-200 pt-2">
+                  <div className="mt-2.5 space-y-1.5 flex flex-col border-t border-slate-200 pt-2">
                     {msg.options.map((opt, i) => (
                       <button 
                         key={i} 
                         onClick={opt.action}
-                        className="text-left bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-md text-[#008069] font-medium text-xs transition active:bg-slate-300"
+                        className="text-left bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl text-[#008069] font-bold text-xs transition active:bg-emerald-200 border border-emerald-200/60"
                       >
                         {opt.label}
                       </button>
@@ -468,49 +274,75 @@ export default function WhatsAppDemo() {
                   </div>
                 )}
 
-                <div className="absolute bottom-1 right-1.5 flex items-center gap-1 text-[10px] text-slate-400">
+                <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-slate-400">
                   {msg.time}
                   {msg.sender === 'user' && <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />}
                 </div>
               </div>
             </div>
           ))}
-          
+
+          {/* Typing Indicator */}
           {isTyping && (
-            <div className="flex items-start">
-              <div className="bg-white rounded-lg rounded-tl-none p-3 shadow-sm flex gap-1">
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
-              </div>
+            <div className="flex items-center gap-1.5 bg-white p-2.5 rounded-2xl rounded-tl-none w-20 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="bg-[#f0f2f5] p-2 flex items-end gap-2">
-          <div className="flex-1 bg-white rounded-2xl px-4 py-2 min-h-[44px] flex items-center shadow-sm">
-            <form onSubmit={handleInputSubmit} className="w-full">
-              <input
-                type="text"
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                placeholder="Mensagem"
-                className="w-full bg-transparent outline-none text-slate-800 text-sm"
-              />
-            </form>
+        {/* Audio Recording Banner */}
+        {isRecording && (
+          <div className="bg-rose-50 border-t border-rose-200 p-2.5 flex items-center justify-between px-4 text-xs animate-pulse text-rose-700">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+              <span className="font-bold">Gravando áudio... 0:0{recordingSeconds}</span>
+            </div>
+            <button
+              onClick={handleToggleRecording}
+              className="text-rose-600 font-extrabold hover:underline"
+            >
+              Solte para enviar
+            </button>
           </div>
-          <button 
-            onClick={handleInputSubmit}
-            disabled={!inputText.trim()}
-            className="w-11 h-11 bg-[#00a884] rounded-full flex items-center justify-center shrink-0 disabled:opacity-50 text-white shadow-sm transition active:scale-95"
-          >
-            <Send className="w-5 h-5 ml-0.5" />
-          </button>
-        </div>
+        )}
 
+        {/* Chat Input Bar */}
+        <div className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-slate-300 shrink-0">
+          <input 
+            type="text" 
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
+            placeholder={isRecording ? 'Gravando áudio...' : 'Mensagem no WhatsApp...'}
+            disabled={isRecording}
+            className="flex-1 bg-white border border-slate-300 rounded-full px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#008069]"
+          />
+
+          {inputText.trim() ? (
+            <button 
+              onClick={() => handleSendText()}
+              className="w-10 h-10 rounded-full bg-[#008069] hover:bg-[#00705c] text-white flex items-center justify-center transition shadow-md shrink-0 active:scale-95"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          ) : (
+            <button 
+              onClick={handleToggleRecording}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-md shrink-0 active:scale-95 ${
+                isRecording 
+                  ? 'bg-rose-600 text-white animate-bounce' 
+                  : 'bg-[#008069] hover:bg-[#00705c] text-white'
+              }`}
+              title="Gravar áudio"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

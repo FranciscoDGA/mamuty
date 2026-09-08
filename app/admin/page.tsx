@@ -14,7 +14,8 @@ import {
   Clock, 
   Phone,
   Filter,
-  Check
+  Check,
+  MessageCircle
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -253,7 +254,20 @@ export default function AdminPage() {
                           </div>
                           
                           {apt.status === 'confirmed' && (
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <a
+                                href={`https://wa.me/55${apt.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                  `Fala, ${apt.customerName}! 💈✂️\n\nConfirmado seu horário hoje às ${apt.time} na Mamuty Barbearia (${apt.serviceNames?.[0] || 'Atendimento'} com ${apt.barberName})?\n\nResponda 1 para CONFIRMAR ou 2 para REMARCAR.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                                title="Enviar Lembrete Anti-No-Show no WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Lembrete WhatsApp</span>
+                              </a>
+
                               <button 
                                 onClick={() => handleComplete(apt.id)} 
                                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"

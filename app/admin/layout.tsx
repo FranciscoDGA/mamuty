@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Scissors, UserCircle, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, Scissors, UserCircle, ArrowLeft, Sparkles } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -50,6 +50,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <UserCircle className="w-4 h-4 text-amber-400" />
               <span>Profissionais</span>
+            </Link>
+            <Link
+              href="/admin/marketing"
+              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 text-slate-200 hover:text-white transition whitespace-nowrap"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Marketing WhatsApp</span>
             </Link>
           </nav>
         </div>
