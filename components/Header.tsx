@@ -18,6 +18,8 @@ import {
   Phone,
   ChevronRight,
   Download,
+  DollarSign,
+  Settings
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUserSwitcher }) => {
@@ -43,7 +45,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
   }, [mobileMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800/80">
+    <header className="sticky top-0 z-40 w-full bg-[#090d16] border-b border-slate-800/80">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         {/* Brand Logo */}
         <Link
@@ -149,16 +151,34 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
 
       {/* Mobile Drawer / Hamburger Menu */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 top-16 z-50 md:hidden bg-black/80 backdrop-blur-md animate-in fade-in duration-200 flex flex-col justify-between">
-          <div className="bg-[#090d16] border-b border-slate-800 p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
-            {/* Quick Profile Summary if logged in */}
+        <div className="fixed inset-0 z-[100] md:hidden bg-[#070a12]/98 flex flex-col">
+          {/* Top Bar of Drawer */}
+          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800 shrink-0 bg-[#090d16]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20">
+                <Scissors className="w-4 h-4 text-slate-950" />
+              </div>
+              <span className="font-black text-base tracking-wider text-white">MAMUTY</span>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+              aria-label="Fechar Menu"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+            {/* Quick Profile Summary */}
             {currentCustomer && (
               <div
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onOpenUserSwitcher?.();
                 }}
-                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between cursor-pointer"
+                className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
@@ -169,13 +189,16 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                     <p className="text-xs text-slate-400">{currentCustomer.phone}</p>
                   </div>
                 </div>
-                <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md font-bold">
-                  {currentCustomer.tier}
-                </span>
+                <div className="text-right">
+                  <span className="text-xs bg-amber-500/15 text-amber-400 px-2.5 py-1 rounded-lg font-bold block">
+                    {currentCustomer.tier}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Trocar perfil</span>
+                </div>
               </div>
             )}
 
-            {/* Menu Links */}
+            {/* Navigation Links */}
             <div className="space-y-2">
               <Link
                 href="/"
@@ -186,7 +209,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                 className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
                   pathname === '/' && activeTab === 'agendar'
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                    : 'bg-slate-900/60 border-slate-800/80 text-slate-200 hover:bg-slate-800'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -207,7 +230,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                 className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
                   pathname === '/whatsapp'
                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                    : 'bg-slate-900/60 border-slate-800/80 text-slate-200 hover:bg-slate-800'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -216,12 +239,38 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-white">WhatsApp Bot</span>
+                      <span className="font-bold text-sm text-white">Assistente WhatsApp (IA)</span>
                       <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">
-                        Sprint 3
+                        Online
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">Simulação de agendamento por chat</span>
+                    <span className="text-xs text-slate-400">Tire dúvidas e marque por mensagem</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/admin/financeiro"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/admin/financeiro'
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-white">Financeiro & Caixa</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">
+                        Gestão
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-400">Faturamento, despesas e comissões</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -231,9 +280,9 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
-                  pathname.startsWith('/admin')
+                  pathname === '/admin'
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                    : 'bg-slate-900/60 border-slate-800/80 text-slate-200 hover:bg-slate-800'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -241,25 +290,41 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-white">Painel Administrativo</span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">
-                        Gestão
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-400">Agenda, clientes, serviços e barbeiros</span>
+                    <span className="font-bold text-sm block text-white">Painel Administrativo</span>
+                    <span className="text-xs text-slate-400">Agenda, clientes, barbeiros e serviços</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/admin/configuracoes"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/admin/configuracoes'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block text-white">Configurações da Barbearia</span>
+                    <span className="text-xs text-slate-400">Horários, tom de voz da IA e WhatsApp</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </Link>
             </div>
 
-            {/* Install PWA Option on Mobile */}
+            {/* PWA Install */}
             <div className="pt-2">
               <PWAInstallButton />
             </div>
 
-            {/* Salon Info on Mobile Drawer */}
+            {/* Salon Info */}
             <div className="pt-4 border-t border-slate-800 text-xs text-slate-400 space-y-2.5">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -280,12 +345,6 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
               </a>
             </div>
           </div>
-
-          {/* Background backdrop click to close */}
-          <div
-            className="flex-1 w-full"
-            onClick={() => setMobileMenuOpen(false)}
-          />
         </div>
       )}
     </header>
