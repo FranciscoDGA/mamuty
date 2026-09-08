@@ -40,14 +40,17 @@ export const metadata: Metadata = {
 };
 
 import { AppProvider } from '@/context/AppContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <body className="min-h-screen bg-[#070a12] text-slate-100 antialiased selection:bg-amber-500 selection:text-black">
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </AuthProvider>
       </body>
     </html>
   );

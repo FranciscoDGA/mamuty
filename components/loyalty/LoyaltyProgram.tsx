@@ -17,26 +17,85 @@ import {
   ChevronRight,
   ShieldAlert,
   Info,
+  Phone,
+  Search,
+  RotateCcw
 } from 'lucide-react';
 
 export const LoyaltyProgram: React.FC = () => {
-  const { currentCustomer, loyaltyRewards, redeemLoyaltyReward, salonConfig, setActiveTab } = useApp();
+  const { currentCustomer, setCurrentCustomer, customers, loyaltyRewards, redeemLoyaltyReward, salonConfig, setActiveTab } = useApp();
+  const [phoneSearch, setPhoneSearch] = useState<string>('');
+  const [notFoundMsg, setNotFoundMsg] = useState<string>('');
   const [redeemSuccessMsg, setRedeemSuccessMsg] = useState<string>('');
+
+  const handleLookupPhone = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = phoneSearch.replace(/\D/g, '');
+    if (!clean) return;
+
+    const found = customers.find(c => c.phone.replace(/\D/g, '').includes(clean));
+    if (found) {
+      setCurrentCustomer(found);
+      setNotFoundMsg('');
+    } else {
+      const tempCust = {
+        id: `phone-${clean}`,
+        name: 'Cliente VIP',
+        phone: phoneSearch,
+        totalVisits: 0,
+        totalSpent: 0,
+        loyaltyStamps: 0,
+        loyaltyPoints: 0,
+        tier: 'Bronze' as const
+      };
+      setCurrentCustomer(tempCust);
+      setNotFoundMsg('Nenhum selo registrado ainda com este número. Ao cortar o cabelo na barbearia, seus selos aparecerão aqui!');
+    }
+  };
 
   if (!currentCustomer) {
     return (
-      <div className="w-full max-w-3xl mx-auto p-8 text-center bg-slate-900 rounded-3xl border border-slate-800">
-        <Award className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-        <h3 className="text-lg font-bold text-white mb-2">Clube de Fidelidade Mamuty</h3>
-        <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
-          Faça um agendamento para começar a acumular selos e pontos exclusivos!
-        </p>
-        <button
-          onClick={() => setActiveTab('agendar')}
-          className="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition"
-        >
-          Agendar Primeiro Corte
-        </button>
+      <div className="w-full max-w-xl mx-auto p-6 bg-slate-900/90 rounded-3xl border border-slate-800 space-y-5 shadow-2xl">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20">
+            <Award className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold text-white">Consulte seu Cartão Fidelidade</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            Sem cadastro chato e sem senha: basta digitar seu número de WhatsApp para ver seus selos e cortes grátis!
+          </p>
+        </div>
+
+        <form onSubmit={handleLookupPhone} className="space-y-3">
+          <div className="relative">
+            <Phone className="w-4 h-4 text-amber-400 absolute left-3.5 top-3.5" />
+            <input
+              type="tel"
+              required
+              value={phoneSearch}
+              onChange={e => setPhoneSearch(e.target.value)}
+              placeholder="Digite seu WhatsApp: (11) 99999-9999"
+              className="w-full bg-slate-950 border border-slate-700 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm transition shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Search className="w-4 h-4" />
+            <span>Consultar Meus Selos</span>
+          </button>
+        </form>
+
+        <div className="pt-3 border-t border-slate-800 text-center">
+          <button
+            onClick={() => setActiveTab('agendar')}
+            className="text-xs text-slate-400 hover:text-amber-400 transition"
+          >
+            Ainda não cortou? <strong className="text-amber-400">Agende seu corte agora &rarr;</strong>
+          </button>
+        </div>
       </div>
     );
   }
@@ -78,15 +137,32 @@ export const LoyaltyProgram: React.FC = () => {
           </p>
         </div>
 
-        {/* Current Tier Badge */}
-        <div className="flex items-center gap-2 self-start sm:self-auto bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-2xl">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <div className="text-left leading-none">
-            <span className="text-[10px] uppercase font-bold text-amber-400/80 block">Categoria</span>
-            <span className="text-xs font-black text-white">{currentCustomer.tier}</span>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={() => setCurrentCustomer(null)}
+            className="text-[11px] font-bold text-slate-400 hover:text-amber-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Consultar Outro Número</span>
+          </button>
+
+          {/* Current Tier Badge */}
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-2xl">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <div className="text-left leading-none">
+              <span className="text-[10px] uppercase font-bold text-amber-400/80 block">Categoria</span>
+              <span className="text-xs font-black text-white">{currentCustomer.tier}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {notFoundMsg && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+          <Info className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{notFoundMsg}</span>
+        </div>
+      )}
 
       {/* Success Notification */}
       {redeemSuccessMsg && (

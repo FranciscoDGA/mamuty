@@ -38,6 +38,7 @@ interface AppContextType {
 
   // Compatibility & Extensions
   addCustomer: (cust: any) => Customer;
+  addLoyaltyStamp: (phone: string) => Promise<Customer | null>;
   submitReview: (...args: any[]) => void;
   transactions: FinancialTransaction[];
   updateSalonConfig: (cfg: Partial<SalonConfig>) => void;
@@ -203,6 +204,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCustomers(prev => [newC, ...prev]);
       return newC;
     }
+  };
+
+  const addLoyaltyStamp = async (phone: string): Promise<Customer | null> => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    let updatedCustomer: Customer | null = null;
+    setCustomers(prev => prev.map(c => {
+      if (c.phone.replace(/\D/g, '') === cleanPhone) {
+        const nextStamps = (c.loyaltyStamps || 0) + 1;
+        const nextPoints = (c.loyaltyPoints || 0) + 20;
+        const nextTier = nextStamps >= 10 ? 'Ouro VIP' : nextStamps >= 5 ? 'Prata' : c.tier;
+        updatedCustomer = {
+          ...c,
+          loyaltyStamps: nextStamps,
+          loyaltyPoints: nextPoints,
+          tier: nextTier
+        };
+        return updatedCustomer;
+      }
+      return c;
+    }));
+
+    // Best-effort Supabase sync
+    try {
+      const { data: dbCust } = await supabase.from('customers').select('id, notes').eq('phone', cleanPhone).maybeSingle();
+      if (dbCust) {
+        await supabase.from('customers').update({
+          notes: `${dbCust.notes || ''} [STAMPS:+1]`.trim()
+        }).eq('id', dbCust.id);
+      }
+    } catch (e) {
+      console.warn('Sync stamp note:', e);
+    }
+
+    return updatedCustomer;
   };
 
   const createAppointment = async (apt: Partial<Appointment> & { customerName: string, customerPhone: string, source?: string }) => {
@@ -413,6 +448,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           createCustomer(cust.name, cust.phone);
           return newC;
         },
+        addLoyaltyStamp,
         submitReview: () => {},
         transactions: [],
         updateSalonConfig: () => {},

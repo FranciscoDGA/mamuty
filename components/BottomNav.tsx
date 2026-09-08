@@ -4,13 +4,14 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Scissors, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Scissors, MessageCircle, ShieldCheck, Award } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab } = useApp();
   const pathname = usePathname();
 
   const isAgendar = pathname === '/' && activeTab === 'agendar';
+  const isFidelidade = pathname === '/' && activeTab === 'fidelidade';
   const isWhatsapp = pathname === '/whatsapp';
   const isAdmin = pathname.startsWith('/admin') || (pathname === '/' && activeTab === 'admin');
 
@@ -21,7 +22,7 @@ export const BottomNav: React.FC = () => {
         <Link
           href="/"
           onClick={() => setActiveTab('agendar')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition ${
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
             isAgendar ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -33,6 +34,24 @@ export const BottomNav: React.FC = () => {
             <Scissors className="w-5 h-5" />
           </div>
           <span className="text-[11px] mt-0.5">Agendar</span>
+        </Link>
+
+        {/* Fidelidade */}
+        <Link
+          href="/"
+          onClick={() => setActiveTab('fidelidade')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+            isFidelidade ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div
+            className={`p-1.5 rounded-lg transition ${
+              isFidelidade ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400'
+            }`}
+          >
+            <Award className="w-5 h-5" />
+          </div>
+          <span className="text-[11px] mt-0.5">Fidelidade</span>
         </Link>
 
         {/* WhatsApp Bot */}

@@ -17,7 +17,9 @@ import {
   Filter,
   Check,
   MessageCircle,
-  Trash2
+  Trash2,
+  Star,
+  CalendarPlus
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -28,6 +30,7 @@ export default function AdminPage() {
     updateAppointmentStatus, 
     createAppointment,
     deleteAppointment,
+    addLoyaltyStamp,
     refreshData
   } = useApp();
 
@@ -135,6 +138,69 @@ export default function AdminPage() {
       alert('Agendamento excluído com sucesso.');
     } catch (err: any) {
       alert('Erro ao excluir agendamento: ' + (err.message || err));
+    }
+  };
+
+  const handleChairReschedule = async (apt: any, daysToAdd: number) => {
+    try {
+      const baseDate = new Date(apt.date + 'T12:00:00');
+      const nextDateObj = new Date(baseDate.getTime() + daysToAdd * 86400000);
+      const nextDateStr = nextDateObj.toISOString().split('T')[0];
+
+      await createAppointment({
+        customerName: apt.customerName,
+        customerPhone: apt.customerPhone,
+        barberId: apt.barberId,
+        barberName: apt.barberName,
+        serviceIds: apt.serviceIds,
+        serviceNames: apt.serviceNames,
+        date: nextDateStr,
+        time: apt.time,
+        totalPrice: apt.totalPrice,
+        totalDurationMinutes: apt.totalDurationMinutes,
+        paymentMethod: apt.paymentMethod || 'presencial',
+        status: 'confirmed',
+        notes: `Agendamento da Cadeira (+${daysToAdd} dias)`
+      });
+
+      const dateFormatted = nextDateObj.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: '2-digit'
+      });
+
+      const msg = `Fala, *${apt.customerName.split(' ')[0]}*! 💈✂️\n\nJá deixei garantido seu retorno aqui na *Barbearia Mamuty* para *${dateFormatted} às ${apt.time}* com o *${apt.barberName}*!\n\nValeu pela confiança e nos vemos lá! 👊`;
+      const cleanPhone = apt.customerPhone.replace(/\D/g, '');
+      const phoneWithDDI = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+      const waUrl = `https://wa.me/${phoneWithDDI}?text=${encodeURIComponent(msg)}`;
+
+      if (confirm(`Agendamento de retorno para ${dateFormatted} às ${apt.time} criado com sucesso!\n\nDeseja abrir o WhatsApp para enviar a confirmação ao cliente?`)) {
+        window.open(waUrl, '_blank');
+      }
+    } catch (err: any) {
+      alert('Erro ao reagendar: ' + (err.message || err));
+    }
+  };
+
+  const handleAddStampFromApt = async (apt: any) => {
+    try {
+      const updated = await addLoyaltyStamp(apt.customerPhone);
+      const stamps = updated ? updated.loyaltyStamps : 1;
+      const remaining = Math.max(0, 10 - stamps);
+
+      const msg = stamps >= 10
+        ? `🎉 *PARABÉNS, ${apt.customerName.split(' ')[0]}!* 💈👑\n\nVocê acaba de completar *10 selos* no seu Cartão Fidelidade da *Barbearia Mamuty*!\n\nSeu próximo *CORTE É TOTALMENTE GRÁTIS*! Pode agendar quando quiser e avisar na recepção!`
+        : `Fala, *${apt.customerName.split(' ')[0]}*! ⭐💈\n\nVocê acabou de ganhar *+1 selo* no seu Cartão Fidelidade da *Barbearia Mamuty*!\n\nAgora você tem *${stamps} de 10 selos*. Faltam apenas *${remaining} selos* para seu corte cortesia! 👊`;
+
+      const cleanPhone = apt.customerPhone.replace(/\D/g, '');
+      const phoneWithDDI = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+      const waUrl = `https://wa.me/${phoneWithDDI}?text=${encodeURIComponent(msg)}`;
+
+      if (confirm(`+1 Selo creditado com sucesso para ${apt.customerName}! (Total: ${stamps}/10)\n\nDeseja enviar a notificação no WhatsApp do cliente?`)) {
+        window.open(waUrl, '_blank');
+      }
+    } catch (err: any) {
+      alert('Erro ao creditar selo: ' + (err.message || err));
     }
   };
 
@@ -266,7 +332,38 @@ export default function AdminPage() {
                               Barbeiro: <strong className="text-white">{apt.barberName}</strong> &bull; Serviço: <strong className="text-amber-400">{apt.serviceNames?.[0] || 'Corte'}</strong> (R$ {apt.totalPrice})
                             </p>
                           </div>
-                                             <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                            {/* Ações de Reagendamento da Cadeira (Ideia 1) */}
+                            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                              <span className="text-[9px] font-bold text-slate-500 uppercase px-1 hidden sm:inline">Cadeira:</span>
+                              <button
+                                onClick={() => handleChairReschedule(apt, 15)}
+                                className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded text-[11px] font-bold transition flex items-center gap-1"
+                                title="Garantir retorno do cliente na cadeira para daqui a 15 dias"
+                              >
+                                <CalendarPlus className="w-3 h-3" />
+                                <span>+15d</span>
+                              </button>
+                              <button
+                                onClick={() => handleChairReschedule(apt, 21)}
+                                className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded text-[11px] font-bold transition flex items-center gap-1"
+                                title="Garantir retorno do cliente na cadeira para daqui a 21 dias (3 semanas)"
+                              >
+                                <CalendarPlus className="w-3 h-3" />
+                                <span>+21d</span>
+                              </button>
+                            </div>
+
+                            {/* Ação de Fidelidade (Ideia 5) */}
+                            <button
+                              onClick={() => handleAddStampFromApt(apt)}
+                              className="px-2 py-1 bg-yellow-500/10 hover:bg-yellow-500/25 text-yellow-300 border border-yellow-500/30 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
+                              title="Creditar +1 Selo no Cartão Fidelidade e avisar no WhatsApp"
+                            >
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              <span>+1 Selo</span>
+                            </button>
+
                             {apt.status === 'confirmed' && (
                               <>
                                 <a
@@ -275,33 +372,33 @@ export default function AdminPage() {
                                   )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-3 py-1.5 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                                  className="px-2.5 py-1 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1 transition"
                                   title="Enviar Lembrete Anti-No-Show no WhatsApp"
                                 >
-                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span>Lembrete WhatsApp</span>
+                                  <MessageCircle className="w-3 h-3 text-emerald-400" />
+                                  <span className="hidden sm:inline">Lembrete</span>
                                 </a>
 
                                 <button 
                                   onClick={() => handleComplete(apt.id)} 
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
                                   title="Concluir Atendimento"
                                 >
-                                  <Check className="w-3.5 h-3.5" /> Concluir
+                                  <Check className="w-3 h-3" /> Concluir
                                 </button>
                                 <button 
                                   onClick={() => handleCancel(apt.id)} 
-                                  className="px-3 py-1.5 bg-slate-900 border border-rose-900/60 text-rose-400 hover:bg-rose-950/40 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                                  className="px-2 py-1 bg-slate-900 border border-rose-900/60 text-rose-400 hover:bg-rose-950/40 rounded-lg text-xs font-bold flex items-center gap-1 transition"
                                   title="Cancelar Agendamento"
                                 >
-                                  <XCircle className="w-3.5 h-3.5" /> Cancelar
+                                  <XCircle className="w-3 h-3" />
                                 </button>
                               </>
                             )}
 
                             <button
                               onClick={() => handleDeleteAppointment(apt.id, apt.customerName)}
-                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-900/40 rounded-lg transition"
+                              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-900/40 rounded-lg transition"
                               title="Excluir Agendamento"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

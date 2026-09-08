@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Download,
   DollarSign,
-  Settings
+  Settings,
+  Award
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUserSwitcher }) => {
@@ -84,6 +85,19 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
             }`}
           >
             Agendar Horário
+          </Link>
+
+          <Link
+            href="/"
+            onClick={() => setActiveTab('fidelidade')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+              pathname === '/' && activeTab === 'fidelidade'
+                ? 'bg-amber-500 text-slate-950 shadow-xs font-bold'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <span>Clube Fidelidade</span>
           </Link>
 
           <Link
@@ -219,6 +233,30 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                   <div>
                     <span className="font-bold text-sm block text-white">Agendar Horário</span>
                     <span className="text-xs text-slate-400">Escolha serviço, barbeiro e horário</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/"
+                onClick={() => {
+                  setActiveTab('fidelidade');
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/' && activeTab === 'fidelidade'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block text-white">Clube Fidelidade</span>
+                    <span className="text-xs text-slate-400">Consulte seus selos apenas com seu celular</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />

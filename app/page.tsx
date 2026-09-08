@@ -113,8 +113,9 @@ function MainContent() {
           </a>
         </div>
 
-        {/* View Switcher - SPRINT 1 Foco apenas no agendamento */}
+        {/* View Switcher */}
         {activeTab === 'agendar' && <BookingWizard />}
+        {activeTab === 'fidelidade' && <LoyaltyProgram />}
         {activeTab === 'admin' && (
           <div className="text-center py-12 space-y-4">
             <h2 className="text-xl font-bold text-white">Painel Administrativo Mamuty</h2>

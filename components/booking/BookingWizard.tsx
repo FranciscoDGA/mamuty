@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 import { Barber, Service } from '@/lib/types';
@@ -42,6 +42,31 @@ export const BookingWizard: React.FC = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [scannedBarberParam, setScannedBarberParam] = useState<string | null>(null);
+
+  // Auto-detect barber from mirror QR code URL param (?barbeiro=...)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const bParam = params.get('barbeiro') || params.get('barber') || params.get('b');
+      if (bParam) {
+        setScannedBarberParam(bParam);
+      }
+    }
+  }, []);
+
+  // When barbers load and URL had a barber param, preselect that barber
+  useEffect(() => {
+    if (scannedBarberParam && barbers.length > 0) {
+      const match = barbers.find(
+        b => b.id.toLowerCase() === scannedBarberParam.toLowerCase() ||
+             b.name.toLowerCase().includes(scannedBarberParam.toLowerCase())
+      );
+      if (match) {
+        setSelectedBarber(match);
+      }
+    }
+  }, [scannedBarberParam, barbers]);
 
   const availableDates = useMemo(() => {
     const dates = [];
@@ -130,8 +155,21 @@ export const BookingWizard: React.FC = () => {
     return taken;
   }, [appointments, selectedDate, selectedBarber, timeSlots, selectedService, barbers]);
 
-  const handleNextStep = () => setStep((s) => s + 1);
-  const handlePrevStep = () => setStep((s) => s - 1);
+  const handleNextStep = () => {
+    if (step === 1 && scannedBarberParam && selectedBarber) {
+      setStep(3); // Skip barber selection since it was scanned from mirror
+    } else {
+      setStep((s) => s + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (step === 3 && scannedBarberParam && selectedBarber) {
+      setStep(1);
+    } else {
+      setStep((s) => s - 1);
+    }
+  };
 
   const handleStepClick = (targetStep: number) => {
     if (targetStep === step) return;
@@ -242,6 +280,32 @@ export const BookingWizard: React.FC = () => {
           <span>Falar com Assistente no WhatsApp &rarr;</span>
         </Link>
       </div>
+
+      {scannedBarberParam && selectedBarber && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-500/10 border border-amber-500/40 p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-md">
+              <Scissors className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-300">Cadeira do Espelho Conectada!</p>
+              <p className="text-xs text-white">
+                Agendando com <strong className="text-amber-400">{selectedBarber.name}</strong>. Escolha o serviço e a data direto na cadeira!
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setScannedBarberParam(null);
+              setSelectedBarber(null);
+            }}
+            className="text-[11px] text-slate-400 hover:text-white underline shrink-0 px-2 py-1"
+            title="Trocar de Barbeiro"
+          >
+            Trocar
+          </button>
+        </div>
+      )}
 
       {step < 6 && (
         <div className="space-y-3 mb-6">
