@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
 import { 
   CheckCircle, 
   XCircle, 
@@ -15,7 +16,8 @@ import {
   Phone,
   Filter,
   Check,
-  MessageCircle
+  MessageCircle,
+  Trash2
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -24,7 +26,8 @@ export default function AdminPage() {
     barbers, 
     services, 
     updateAppointmentStatus, 
-    createAppointment 
+    createAppointment,
+    refreshData
   } = useApp();
 
   const [filterBarber, setFilterBarber] = useState<string>('all');
@@ -122,6 +125,18 @@ export default function AdminPage() {
 
   const handleComplete = async (id: string) => {
     await updateAppointmentStatus(id, 'completed');
+  };
+
+  const handleDeleteAppointment = async (id: string, clientName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o agendamento de "${clientName}"?`)) return;
+    try {
+      const { error } = await supabase.from('appointments').delete().eq('id', id);
+      if (error) throw error;
+      await refreshData();
+      alert('Agendamento excluído com sucesso.');
+    } catch (err: any) {
+      alert('Erro ao excluir agendamento: ' + (err.message || err));
+    }
   };
 
   return (
@@ -252,38 +267,47 @@ export default function AdminPage() {
                               Barbeiro: <strong className="text-white">{apt.barberName}</strong> &bull; Serviço: <strong className="text-amber-400">{apt.serviceNames?.[0] || 'Corte'}</strong> (R$ {apt.totalPrice})
                             </p>
                           </div>
-                          
-                          {apt.status === 'confirmed' && (
-                            <div className="flex flex-wrap items-center gap-2 shrink-0">
-                              <a
-                                href={`https://wa.me/55${apt.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                  `Fala, ${apt.customerName}! 💈✂️\n\nConfirmado seu horário hoje às ${apt.time} na Mamuty Barbearia (${apt.serviceNames?.[0] || 'Atendimento'} com ${apt.barberName})?\n\nResponda 1 para CONFIRMAR ou 2 para REMARCAR.`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
-                                title="Enviar Lembrete Anti-No-Show no WhatsApp"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Lembrete WhatsApp</span>
-                              </a>
+                                             <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            {apt.status === 'confirmed' && (
+                              <>
+                                <a
+                                  href={`https://wa.me/55${apt.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                    `Fala, ${apt.customerName}! 💈✂️\n\nConfirmado seu horário hoje às ${apt.time} na Mamuty Barbearia (${apt.serviceNames?.[0] || 'Atendimento'} com ${apt.barberName})?\n\nResponda 1 para CONFIRMAR ou 2 para REMARCAR.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                                  title="Enviar Lembrete Anti-No-Show no WhatsApp"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Lembrete WhatsApp</span>
+                                </a>
 
-                              <button 
-                                onClick={() => handleComplete(apt.id)} 
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                                title="Concluir Atendimento"
-                              >
-                                <Check className="w-3.5 h-3.5" /> Concluir
-                              </button>
-                              <button 
-                                onClick={() => handleCancel(apt.id)} 
-                                className="px-3 py-1.5 bg-slate-900 border border-rose-900/60 text-rose-400 hover:bg-rose-950/40 rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                                title="Cancelar Agendamento"
-                              >
-                                <XCircle className="w-3.5 h-3.5" /> Cancelar
-                              </button>
-                            </div>
-                          )}
+                                <button 
+                                  onClick={() => handleComplete(apt.id)} 
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                                  title="Concluir Atendimento"
+                                >
+                                  <Check className="w-3.5 h-3.5" /> Concluir
+                                </button>
+                                <button 
+                                  onClick={() => handleCancel(apt.id)} 
+                                  className="px-3 py-1.5 bg-slate-900 border border-rose-900/60 text-rose-400 hover:bg-rose-950/40 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                                  title="Cancelar Agendamento"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" /> Cancelar
+                                </button>
+                              </>
+                            )}
+
+                            <button
+                              onClick={() => handleDeleteAppointment(apt.id, apt.customerName)}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-900/40 rounded-lg transition"
+                              title="Excluir Agendamento"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

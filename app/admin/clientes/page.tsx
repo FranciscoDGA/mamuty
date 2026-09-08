@@ -2,15 +2,31 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Users, Plus, X, Phone, Calendar, UserPlus, MessageCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { Users, Plus, X, Phone, Calendar, UserPlus, MessageCircle, Trash2 } from 'lucide-react';
 
 export default function ClientesPage() {
-  const { customers, appointments, createCustomer } = useApp();
+  const { customers, appointments, createCustomer, refreshData } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDeleteCustomer = async (id: string, custName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o cliente "${custName}"? Os agendamentos deste cliente também serão removidos.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('customers').delete().eq('id', id);
+      if (error) throw error;
+      await refreshData();
+      alert(`Cliente "${custName}" removido com sucesso.`);
+    } catch (err: any) {
+      alert('Erro ao excluir cliente: ' + (err.message || err));
+    }
+  };
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,10 +117,17 @@ export default function ClientesPage() {
                   )}
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs bg-slate-800/80 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-700/60 font-semibold">
                     Cliente Ativo
                   </span>
+                  <button
+                    onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                    className="p-2 rounded-xl bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500 transition"
+                    title="Excluir cliente permanentemente"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             );

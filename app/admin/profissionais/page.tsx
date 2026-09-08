@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, Trash2 } from 'lucide-react';
 
 export default function ProfissionaisPage() {
   const { barbers, refreshData } = useApp();
@@ -55,6 +55,19 @@ export default function ProfissionaisPage() {
     }
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o profissional "${name}"?`)) return;
+
+    try {
+      const { error } = await supabase.from('barbers').delete().eq('id', id);
+      if (error) throw error;
+      await refreshData();
+      alert(`Profissional "${name}" excluído com sucesso.`);
+    } catch (err: any) {
+      alert('Erro ao excluir profissional: ' + (err.message || err));
+    }
+  };
+
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
@@ -77,13 +90,24 @@ export default function ProfissionaisPage() {
             <p className="text-xs text-amber-400 font-bold mb-2">{barber.role}</p>
             <p className="text-sm text-slate-400 mb-4">{barber.specialties.join(', ')}</p>
             
-            <button 
-              onClick={() => toggleStatus(barber.id, true)}
-              title="Desativar profissional"
-              className="mt-auto bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-3 py-1 text-[10px] uppercase font-bold rounded-full transition"
-            >
-              Ativo
-            </button>
+            <div className="mt-auto w-full pt-3 border-t border-slate-800 flex items-center justify-between">
+              <button 
+                onClick={() => toggleStatus(barber.id, true)}
+                title="Desativar profissional"
+                className="bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-3 py-1 text-[10px] uppercase font-bold rounded-lg transition"
+              >
+                Ativo
+              </button>
+
+              <button
+                onClick={() => handleDelete(barber.id, barber.name)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition flex items-center gap-1 text-xs"
+                title="Excluir profissional permanentemente"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Excluir</span>
+              </button>
+            </div>
           </div>
         ))}
       </div>
