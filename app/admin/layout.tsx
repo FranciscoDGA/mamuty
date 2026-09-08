@@ -19,7 +19,8 @@ import {
   Menu,
   X,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/servicos', label: 'Serviços & Produtos', icon: Scissors },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/marketing', label: 'Marketing & QR Code', icon: Sparkles },
+    { href: '/admin/ajuda', label: 'Ajuda & Treinamento', icon: HelpCircle, isSpecial: true },
     { href: '/admin/configuracoes', label: 'Configurações', icon: Settings },
   ];
 
@@ -92,7 +94,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/admin/ajuda"
+            className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1 active:scale-95 ${
+              pathname === '/admin/ajuda'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
+            }`}
+            title="Central de Ajuda & Treinamento"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span className="text-[10px] hidden sm:inline">Ajuda</span>
+          </Link>
           <button
             onClick={handleLogout}
             className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold transition flex items-center gap-1 active:scale-95"
