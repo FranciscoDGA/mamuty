@@ -235,14 +235,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="hidden md:flex w-64 bg-slate-900/90 border-r border-slate-800 p-5 shrink-0 flex-col justify-between gap-6 sticky top-0 h-screen">
         <div className="space-y-6">
           {/* Logo & Title */}
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500 block">
-              Gestão da Barbearia
-            </span>
-            <h1 className="text-xl font-black text-white tracking-wide flex items-center gap-2">
-              <span>Mamuty Admin</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            </h1>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full overflow-hidden border border-amber-500/50 bg-black flex items-center justify-center shadow-md shrink-0">
+              <img src="/logo.png" alt="Mamuty Admin" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 block">
+                Gestão da Barbearia
+              </span>
+              <h1 className="text-base font-black text-white tracking-wide flex items-center gap-1.5">
+                <span>Mamuty Admin</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              </h1>
+            </div>
           </div>
 
           {/* Owner Profile Card */}

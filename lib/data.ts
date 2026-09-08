@@ -1,30 +1,66 @@
 import { Appointment, Barber, Customer, FinancialTransaction, LoyaltyReward, PortfolioPhoto, Review, SalonConfig, Service } from './types';
 
 export const INITIAL_SALON_CONFIG: SalonConfig = {
-  name: 'Barbearia Mamuty',
-  tagline: 'Excelência em Cabelo, Barba e Estilo Masculino',
-  address: 'Av. Paulista, 1842 - Sala 04 - Bela Vista, São Paulo - SP',
-  phone: '(11) 98765-4321',
-  whatsappNumber: '5511987654321',
-  pixKey: 'pix@barbeariamamuty.com.br',
+  name: 'Mamuty Barbearia',
+  tagline: 'Mamuty barbearia estilo forte.',
+  address: 'Cumaru do Norte - PA, CEP 68398-000, Brasil',
+  phone: '(94) 98443-9065',
+  whatsappNumber: '5594984439065',
+  pixKey: 'hemersonpbarber@gmail.com',
   pixKeyType: 'E-mail',
-  pixBeneficiary: 'Mamuty Barbearia & Estética Masculina LTDA',
-  pixCity: 'SAO PAULO',
-  instagram: '@barbeariamamuty',
-  openingHours: 'Segunda a Sábado: 09:00 às 20:30',
+  pixBeneficiary: 'Mamuty Barbearia (Hemerson Barber)',
+  pixCity: 'CUMARU DO NORTE',
+  instagram: '@mamutybarbearia',
+  openingHours: 'Segunda a Sábado: Somente com hora marcada',
   loyaltyStampsGoal: 10,
 };
 
 export const INITIAL_SERVICES: Service[] = [
-  { id: 'srv-1', name: 'Corte', category: 'cabelo', description: 'Corte completo.', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
-  { id: 'srv-2', name: 'Barba', category: 'barba', description: 'Barba alinhada.', price: 25, durationMinutes: 30, pointsReward: 25 },
-  { id: 'srv-3', name: 'Corte + Barba', category: 'combos', description: 'Pacote completo.', price: 55, durationMinutes: 70, pointsReward: 55, popular: true }
+  { id: 'srv-1', name: 'Corte Tradicional / Tesoura', category: 'cabelo', description: 'Corte masculino completo com alinhamento e finalização.', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
+  { id: 'srv-2', name: 'Degradê / Fade Especial', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
+  { id: 'srv-3', name: 'Corte Kids Personalizado', category: 'cabelo', description: 'Atendimento especial e personalizado para crianças.', price: 35, durationMinutes: 35, pointsReward: 35, popular: true },
+  { id: 'srv-4', name: 'Barba Alinhada & Modelada', category: 'barba', description: 'Desenho, hidratação e toalha para barba perfeita.', price: 25, durationMinutes: 30, pointsReward: 25 },
+  { id: 'srv-5', name: 'Combo Mamuty: Cabelo + Barba', category: 'combos', description: 'Corte completo + Barba alinhada no estilo forte Mamuty.', price: 55, durationMinutes: 70, pointsReward: 55, popular: true },
+  { id: 'srv-6', name: 'Pezinho & Acabamento Navalhado', category: 'cabelo', description: 'Alinhamento rápido de laterais e nuca na navalha.', price: 15, durationMinutes: 20, pointsReward: 15 }
 ];
 
 export const INITIAL_BARBERS: Barber[] = [
-  { id: 'barber-1', name: 'João', role: 'Especialista em cortes masculinos', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80', rating: 5.0, reviewsCount: 100, specialties: ['Cortes masculinos'], phone: '11999991111', bio: 'Especialista em cortes masculinos.', availableDays: [1,2,3,4,5,6] },
-  { id: 'barber-2', name: 'Carlos', role: 'Especialista em barba e acabamento', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', rating: 4.8, reviewsCount: 85, specialties: ['Barba'], phone: '11999992222', bio: 'Especialista em barba e acabamento.', availableDays: [1,2,3,4,5,6] },
-  { id: 'barber-3', name: 'Pedro', role: 'Especialista em degradê', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80', rating: 4.9, reviewsCount: 92, specialties: ['Degradê'], phone: '11999993333', bio: 'Especialista em degradê.', availableDays: [1,2,3,4,5,6] },
+  { 
+    id: 'barber-1', 
+    name: 'Hemerson Barber', 
+    role: 'Fundador & Barbeiro Chefe', 
+    avatarUrl: '/logo.png', 
+    rating: 5.0, 
+    reviewsCount: 148, 
+    specialties: ['Cortes Masculinos', 'Degradê', 'Atendimento Kids Personalizado', 'Barba'], 
+    phone: '(94) 98443-9065', 
+    bio: 'Fundador da Mamuty Barbearia. Estilo forte, pontualidade britânica e atendimento dedicado a adultos e kids.', 
+    availableDays: [1,2,3,4,5,6] 
+  },
+  { 
+    id: 'barber-2', 
+    name: 'Carlos Barbeiro', 
+    role: 'Especialista em Degradê & Barba', 
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', 
+    rating: 4.9, 
+    reviewsCount: 88, 
+    specialties: ['Fade Navalhado', 'Barboterapia', 'Pezinho'], 
+    phone: '(94) 98443-9065', 
+    bio: 'Precisão milimétrica e acabamento na régua.', 
+    availableDays: [1,2,3,4,5,6] 
+  },
+  { 
+    id: 'barber-3', 
+    name: 'Marcos Barbeiro', 
+    role: 'Especialista em Corte Clássico & Kids', 
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80', 
+    rating: 4.9, 
+    reviewsCount: 92, 
+    specialties: ['Corte Tradicional', 'Atendimento Infantil', 'Sobrancelha'], 
+    phone: '(94) 98443-9065', 
+    bio: 'Paciência no atendimento kids e visual clássico de respeito.', 
+    availableDays: [1,2,3,4,5,6] 
+  },
 ];
 
 export const INITIAL_LOYALTY_REWARDS: LoyaltyReward[] = [

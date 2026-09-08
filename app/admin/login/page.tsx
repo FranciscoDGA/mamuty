@@ -163,12 +163,12 @@ export default function AdminLoginPage() {
         
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
-            <Scissors className="w-7 h-7" />
+          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-amber-500/60 bg-black mx-auto flex items-center justify-center shadow-xl shadow-amber-500/20">
+            <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-wide">Área do Dono</h1>
           <p className="text-xs text-slate-400">
-            Controle financeiro, agenda, clientes e gestão da Mamuty Barbearia
+            Mamuty Barbearia &bull; Estilo Forte &bull; Cumaru do Norte - PA
           </p>
         </div>
 
@@ -294,7 +294,7 @@ export default function AdminLoginPage() {
                 className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs transition flex items-center justify-center gap-2 active:scale-95"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Entrar como Dono Demo (1 Clique)</span>
+                <span>Entrar como Hemerson Barber (1 Clique)</span>
               </button>
             </div>
           </form>

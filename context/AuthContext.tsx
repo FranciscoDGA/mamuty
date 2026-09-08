@@ -28,10 +28,11 @@ const LOCAL_STORAGE_ACCOUNTS_KEY = 'mamuty_owner_accounts';
 // Default Owner Account for immediate access
 const DEFAULT_OWNER: AdminUser = {
   id: 'owner-default-1',
-  name: 'Francisco (Dono Mamuty)',
-  email: 'dono@mamuty.com',
-  phone: '(11) 99999-8888',
-  role: 'owner'
+  name: 'Hemerson Barber (Dono Mamuty)',
+  email: 'hemersonpbarber@gmail.com',
+  phone: '(94) 98443-9065',
+  role: 'owner',
+  avatarUrl: '/logo.png'
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -111,7 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanInput = emailOrPhone.trim().toLowerCase();
 
       // Quick check: default master owner or quick demo
-      if ((cleanInput === 'dono@mamuty.com' || cleanInput === 'admin@mamuty.com') && password === 'mamuty123') {
+      if (
+        (cleanInput === 'hemersonpbarber@gmail.com' || cleanInput === 'dono@mamuty.com' || cleanInput === 'admin@mamuty.com' || cleanInput.includes('84439065')) && 
+        password === 'mamuty123'
+      ) {
         localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(DEFAULT_OWNER));
         setUser(DEFAULT_OWNER);
         return { success: true };

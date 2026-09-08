@@ -47,6 +47,7 @@ function MainContent() {
   const [reviewingAppointment, setReviewingAppointment] = useState<Appointment | null>(null);
   const [modalRating, setModalRating] = useState(5);
   const [modalComment, setModalComment] = useState('');
+  const [showPromoNotice, setShowPromoNotice] = useState(true);
 
   const handleCreateCustomerProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +113,35 @@ function MainContent() {
             <span>Suporte WhatsApp: {salonConfig.whatsappNumber}</span>
           </a>
         </div>
+
+        {/* Special Promo / Story Announcement Card */}
+        {showPromoNotice && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500/15 via-slate-900 to-amber-500/10 border border-amber-500/30 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-amber-500/50 shadow-md bg-black">
+                <img src="/assets/promo-banner.jpg" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                  Aviso da Barbearia &bull; Somente com Hora Marcada
+                </span>
+                <h4 className="text-xs sm:text-sm font-extrabold text-white">
+                  Atendimento Especial: Cortes Masculinos, Barba e Kids Personalizado
+                </h4>
+                <p className="text-[11px] text-slate-300">
+                  Agende sua vaga com antecedência para garantir seu atendimento sem espera!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPromoNotice(false)}
+              className="text-slate-500 hover:text-white text-xs p-1.5 rounded-lg hover:bg-slate-800 shrink-0 transition"
+              title="Fechar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* View Switcher */}
         {activeTab === 'agendar' && <BookingWizard />}

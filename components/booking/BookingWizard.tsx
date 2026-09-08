@@ -267,18 +267,51 @@ export const BookingWizard: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="mb-6 flex flex-col items-center justify-center text-center space-y-3 bg-slate-900/60 p-6 rounded-3xl border border-slate-800">
-        <h1 className="text-3xl font-extrabold text-slate-100">Agende seu Horário</h1>
-        <p className="text-slate-400 text-sm max-w-md">
-          Bem-vindo à Mamuty. Agende em poucos passos abaixo ou converse diretamente com nosso assistente no WhatsApp.
+      <div className="mb-6 flex flex-col items-center justify-center text-center space-y-3 bg-gradient-to-b from-slate-900/90 to-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-xl">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-amber-500/60 bg-black shadow-lg shadow-amber-500/20">
+          <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide">Mamuty Barbearia</h1>
+          <p className="text-xs sm:text-sm text-amber-400 font-bold mt-0.5">
+            ~Mamuty barbearia estilo forte.
+          </p>
+        </div>
+
+        {/* Chips with Official Highlights */}
+        <div className="flex items-center justify-center gap-2 flex-wrap text-[11px] text-slate-300">
+          <span className="bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60">
+            📍 Cumaru do Norte - PA
+          </span>
+          <span className="bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60 text-emerald-400 font-semibold">
+            💈 Atendimento Adulto & Kids
+          </span>
+          <span className="bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60 text-amber-300">
+            ⏰ Somente com hora marcada
+          </span>
+        </div>
+
+        <p className="text-slate-400 text-xs max-w-md pt-1">
+          Cuidamos do seu visual com excelência. Agende abaixo ou converse com nossa IA no WhatsApp!
         </p>
-        <Link
-          href="/whatsapp"
-          className="mt-1 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-95"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>Falar com Assistente no WhatsApp &rarr;</span>
-        </Link>
+
+        <div className="pt-2 flex items-center gap-2 flex-wrap justify-center">
+          <Link
+            href="/whatsapp"
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-95"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Agendar pelo WhatsApp (IA)</span>
+          </Link>
+          <a
+            href="https://wa.me/5594984439065"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl transition border border-slate-700 active:scale-95"
+          >
+            <span>(94) 98443-9065</span>
+          </a>
+        </div>
       </div>
 
       {scannedBarberParam && selectedBarber && (

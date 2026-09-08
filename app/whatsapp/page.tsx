@@ -66,7 +66,7 @@ export default function WhatsAppDemo() {
 
   // Quick Audio Presets
   const audioPresets = [
-    { label: '🎙️ "Tem vaga pra hoje com Carlos?"', text: 'Olá, gostaria de saber se tem vaga pra corte hoje com o Carlos!' },
+    { label: '🎙️ "Tem vaga com Hemerson hoje?"', text: 'Olá, gostaria de saber se tem vaga pra corte hoje com o Hemerson!' },
     { label: '🎙️ "Quanto custa corte e barba?"', text: 'Boa tarde, quanto sai o combo de corte de cabelo e barba?' },
     { label: '🎙️ "Quero agendar no sábado de manhã"', text: 'Fala galera, quero marcar um horário no sábado de manhã, como faço?' }
   ];
@@ -354,10 +354,8 @@ export default function WhatsAppDemo() {
             >
               <ChevronLeft className="w-6 h-6" />
             </Link>
-            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-white/20">
-               <div className="w-full h-full bg-amber-500 flex items-center justify-center">
-                 <Scissors className="w-5 h-5 text-slate-900" />
-               </div>
+            <div className="w-10 h-10 rounded-full bg-black overflow-hidden shrink-0 border border-white/30">
+               <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">

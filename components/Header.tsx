@@ -57,18 +57,22 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
           }}
           className="flex items-center gap-2.5 text-left group transition shrink-0"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
-            <Scissors className="w-5 h-5 text-slate-950" />
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-amber-500/50 bg-black flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="Logo Mamuty Barbearia" 
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg tracking-wider text-white">MAMUTY</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <span className="font-black text-lg tracking-wider text-white">MAMUTY</span>
+              <span className="text-[10px] uppercase font-black tracking-wider px-1.5 py-0.5 rounded-sm bg-amber-500/20 text-amber-400 border border-amber-500/40">
                 Barbearia
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-              {salonConfig.tagline || 'Excelência em Cabelo, Barba e Estilo'}
+            <p className="text-[11px] text-amber-400/90 font-medium hidden sm:block">
+              {salonConfig.tagline || '~Mamuty barbearia estilo forte.'}
             </p>
           </div>
         </Link>
@@ -169,10 +173,13 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
           {/* Top Bar of Drawer */}
           <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800 shrink-0 bg-[#090d16]">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20">
-                <Scissors className="w-4 h-4 text-slate-950" />
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-amber-500/50 bg-black flex items-center justify-center shadow-md shrink-0">
+                <img src="/logo.png" alt="Mamuty" className="w-full h-full object-cover" />
               </div>
-              <span className="font-black text-base tracking-wider text-white">MAMUTY</span>
+              <div>
+                <span className="font-black text-base tracking-wider text-white block leading-tight">MAMUTY</span>
+                <span className="text-[10px] text-amber-400 font-semibold">Estilo Forte &bull; Cumaru do Norte</span>
+              </div>
             </div>
             <button
               onClick={() => setMobileMenuOpen(false)}
