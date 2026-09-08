@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
-import { Loader2, Plus, X, Trash2 } from 'lucide-react';
+import { Loader2, Plus, X, Trash2, Pencil } from 'lucide-react';
 
 export default function ProfissionaisPage() {
   const { barbers, refreshData } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBarber, setEditingBarber] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,27 +20,60 @@ export default function ProfissionaisPage() {
     photo_url: ''
   });
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openNewModal = () => {
+    setEditingBarber(null);
+    setFormData({ name: '', specialty: '', description: '', photo_url: '' });
+    setError('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (barber: any) => {
+    setEditingBarber(barber);
+    setFormData({
+      name: barber.name || '',
+      specialty: barber.specialties?.join(', ') || barber.role || '',
+      description: barber.role || '',
+      photo_url: barber.avatarUrl || ''
+    });
+    setError('');
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
     try {
-      const { error: dbError } = await supabase.from('barbers').insert({
-        name: formData.name,
-        specialty: formData.specialty,
-        description: formData.description,
-        photo_url: formData.photo_url || null,
-        active: true
-      });
+      if (editingBarber) {
+        const { error: dbError } = await supabase.from('barbers').update({
+          name: formData.name,
+          specialty: formData.specialty,
+          description: formData.description,
+          photo_url: formData.photo_url || null
+        }).eq('id', editingBarber.id);
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
+        alert('Profissional atualizado com sucesso!');
+      } else {
+        const { error: dbError } = await supabase.from('barbers').insert({
+          name: formData.name,
+          specialty: formData.specialty,
+          description: formData.description,
+          photo_url: formData.photo_url || null,
+          active: true
+        });
+
+        if (dbError) throw dbError;
+        alert('Profissional cadastrado com sucesso!');
+      }
 
       await refreshData();
       setIsModalOpen(false);
+      setEditingBarber(null);
       setFormData({ name: '', specialty: '', description: '', photo_url: '' });
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar profissional');
+      setError(err.message || 'Erro ao salvar profissional');
     } finally {
       setIsSubmitting(false);
     }
@@ -73,9 +107,9 @@ export default function ProfissionaisPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
         <div>
           <h1 className="text-2xl font-extrabold text-white">Equipe de Barbeiros</h1>
-          <p className="text-xs text-slate-400 mt-1">Cadastre e gerencie os profissionais da barbearia</p>
+          <p className="text-xs text-slate-400 mt-1">Cadastre, edite e gerencie os profissionais da barbearia</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20">
+        <button onClick={openNewModal} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20">
           <Plus className="w-4 h-4" /> Novo Profissional
         </button>
       </div>
@@ -90,23 +124,33 @@ export default function ProfissionaisPage() {
             <p className="text-xs text-amber-400 font-bold mb-2">{barber.role}</p>
             <p className="text-sm text-slate-400 mb-4">{barber.specialties.join(', ')}</p>
             
-            <div className="mt-auto w-full pt-3 border-t border-slate-800 flex items-center justify-between">
+            <div className="mt-auto w-full pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
               <button 
                 onClick={() => toggleStatus(barber.id, true)}
-                title="Desativar profissional"
-                className="bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-3 py-1 text-[10px] uppercase font-bold rounded-lg transition"
+                title="Status do profissional"
+                className="bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-2.5 py-1 text-[10px] uppercase font-bold rounded-lg transition"
               >
                 Ativo
               </button>
 
-              <button
-                onClick={() => handleDelete(barber.id, barber.name)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition flex items-center gap-1 text-xs"
-                title="Excluir profissional permanentemente"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Excluir</span>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openEditModal(barber)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 transition flex items-center gap-1 text-xs font-semibold"
+                  title="Editar profissional"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Editar</span>
+                </button>
+
+                <button
+                  onClick={() => handleDelete(barber.id, barber.name)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition flex items-center gap-1 text-xs"
+                  title="Excluir profissional permanentemente"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -114,9 +158,18 @@ export default function ProfissionaisPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <form onSubmit={handleCreate} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4 relative">
+          <form onSubmit={handleSave} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4 relative">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-lg text-white">Cadastrar Profissional</h3>
+              <div className="flex items-center gap-2">
+                {editingBarber ? (
+                  <Pencil className="w-5 h-5 text-amber-400" />
+                ) : (
+                  <Plus className="w-5 h-5 text-amber-400" />
+                )}
+                <h3 className="font-bold text-lg text-white">
+                  {editingBarber ? `Editar: ${editingBarber.name}` : 'Cadastrar Profissional'}
+                </h3>
+              </div>
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition">
                 <X className="w-5 h-5" />
               </button>
@@ -144,7 +197,7 @@ export default function ProfissionaisPage() {
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold flex items-center justify-center gap-2 transition mt-4">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Profissional'}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : editingBarber ? 'Atualizar Profissional' : 'Salvar Profissional'}
             </button>
           </form>
         </div>

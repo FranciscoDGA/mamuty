@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Plus, X, Trash2, Scissors, Package, Check } from 'lucide-react';
+import { Service } from '@/lib/types';
+import { Loader2, Plus, X, Trash2, Scissors, Package, Check, Pencil } from 'lucide-react';
 
 export default function ServicosPage() {
   const { services, refreshData } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Service | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'servico' | 'produto'>('all');
@@ -20,7 +22,29 @@ export default function ServicosPage() {
     duration_minutes: '30'
   });
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openNewModal = () => {
+    setEditingItem(null);
+    setFormData({ name: '', type: 'servico', description: '', price: '', duration_minutes: '30' });
+    setError('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: Service) => {
+    setEditingItem(item);
+    const isProduct = item.description?.includes('[PRODUTO]');
+    const cleanDescription = item.description?.replace('[PRODUTO]', '').trim() || '';
+    setFormData({
+      name: item.name,
+      type: isProduct ? 'produto' : 'servico',
+      description: cleanDescription,
+      price: item.price.toString(),
+      duration_minutes: item.durationMinutes.toString()
+    });
+    setError('');
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
@@ -30,22 +54,35 @@ export default function ServicosPage() {
         ? `[PRODUTO] ${formData.description}` 
         : formData.description;
 
-      const { error: dbError } = await supabase.from('services').insert({
-        name: formData.name,
-        description: descriptionWithType,
-        price: parseFloat(formData.price),
-        duration_minutes: formData.type === 'produto' ? 0 : parseInt(formData.duration_minutes || '30'),
-        active: true
-      });
+      if (editingItem) {
+        const { error: dbError } = await supabase.from('services').update({
+          name: formData.name,
+          description: descriptionWithType,
+          price: parseFloat(formData.price),
+          duration_minutes: formData.type === 'produto' ? 0 : parseInt(formData.duration_minutes || '30'),
+        }).eq('id', editingItem.id);
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
+        alert(formData.type === 'produto' ? 'Produto atualizado com sucesso!' : 'Serviço atualizado com sucesso!');
+      } else {
+        const { error: dbError } = await supabase.from('services').insert({
+          name: formData.name,
+          description: descriptionWithType,
+          price: parseFloat(formData.price),
+          duration_minutes: formData.type === 'produto' ? 0 : parseInt(formData.duration_minutes || '30'),
+          active: true
+        });
+
+        if (dbError) throw dbError;
+        alert(formData.type === 'produto' ? 'Produto cadastrado com sucesso!' : 'Serviço cadastrado com sucesso!');
+      }
 
       await refreshData();
       setIsModalOpen(false);
+      setEditingItem(null);
       setFormData({ name: '', type: 'servico', description: '', price: '', duration_minutes: '30' });
-      alert(formData.type === 'produto' ? 'Produto cadastrado com sucesso!' : 'Serviço cadastrado com sucesso!');
     } catch (err: any) {
-      setError(err.message || 'Erro ao cadastrar');
+      setError(err.message || 'Erro ao salvar');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,7 +130,7 @@ export default function ServicosPage() {
         </div>
 
         <button 
-          onClick={() => setIsModalOpen(true)} 
+          onClick={openNewModal} 
           className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 shrink-0"
         >
           <Plus className="w-4 h-4" /> Novo Serviço ou Produto
@@ -174,20 +211,30 @@ export default function ServicosPage() {
               <div className="flex items-center justify-between pt-3 border-t border-slate-800/80">
                 <button 
                   onClick={() => toggleStatus(item.id, true)}
-                  title="Desativar item"
+                  title="Status do item"
                   className="bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-3 py-1 text-[10px] uppercase font-bold rounded-lg transition"
                 >
                   Ativo
                 </button>
 
-                <button
-                  onClick={() => handleDelete(item.id, item.name)}
-                  className="p-2 rounded-lg bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500 transition flex items-center gap-1 text-xs"
-                  title="Excluir item permanentemente"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Excluir</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => openEditModal(item)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 transition flex items-center gap-1 text-xs font-semibold"
+                    title="Editar item"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Editar</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(item.id, item.name)}
+                    className="p-1.5 rounded-lg bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500 transition flex items-center gap-1 text-xs"
+                    title="Excluir item permanentemente"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -201,12 +248,21 @@ export default function ServicosPage() {
         )}
       </div>
 
-      {/* Modal: Novo Serviço ou Produto */}
+      {/* Modal: Novo / Editar Serviço ou Produto */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
-          <form onSubmit={handleCreate} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4 relative">
+          <form onSubmit={handleSave} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4 relative">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-lg text-white">Cadastrar Serviço ou Produto</h3>
+              <div className="flex items-center gap-2">
+                {editingItem ? (
+                  <Pencil className="w-5 h-5 text-amber-400" />
+                ) : (
+                  <Plus className="w-5 h-5 text-amber-400" />
+                )}
+                <h3 className="font-bold text-lg text-white">
+                  {editingItem ? `Editar: ${editingItem.name}` : 'Cadastrar Serviço ou Produto'}
+                </h3>
+              </div>
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition">
                 <X className="w-5 h-5" />
               </button>
@@ -314,7 +370,7 @@ export default function ServicosPage() {
                 disabled={isSubmitting} 
                 className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
               >
-                {isSubmitting ? 'Cadastrando...' : 'Salvar'}
+                {isSubmitting ? 'Salvando...' : editingItem ? 'Atualizar' : 'Salvar'}
               </button>
             </div>
           </form>

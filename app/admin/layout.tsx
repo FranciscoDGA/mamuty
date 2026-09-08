@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Scissors, UserCircle, ArrowLeft, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, Scissors, UserCircle, ArrowLeft, Sparkles, Settings } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 text-slate-200 hover:text-white transition whitespace-nowrap"
             >
               <Scissors className="w-4 h-4 text-amber-400" />
-              <span>Serviços</span>
+              <span>Serviços & Produtos</span>
             </Link>
             <Link
               href="/admin/profissionais"
@@ -57,6 +57,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <Sparkles className="w-4 h-4 text-amber-400" />
               <span>Marketing WhatsApp</span>
+            </Link>
+            <Link
+              href="/admin/configuracoes"
+              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 text-slate-200 hover:text-white transition whitespace-nowrap"
+            >
+              <Settings className="w-4 h-4 text-amber-400" />
+              <span>Configurações</span>
             </Link>
           </nav>
         </div>

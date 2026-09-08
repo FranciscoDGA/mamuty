@@ -3,15 +3,31 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
-import { Users, Plus, X, Phone, Calendar, UserPlus, MessageCircle, Trash2 } from 'lucide-react';
+import { Customer } from '@/lib/types';
+import { Users, Plus, X, Phone, Calendar, UserPlus, MessageCircle, Trash2, Pencil } from 'lucide-react';
 
 export default function ClientesPage() {
   const { customers, appointments, createCustomer, refreshData } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const openNewCustomerModal = () => {
+    setEditingCustomer(null);
+    setName('');
+    setPhone('');
+    setIsModalOpen(true);
+  };
+
+  const openEditCustomerModal = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setName(customer.name);
+    setPhone(customer.phone);
+    setIsModalOpen(true);
+  };
 
   const handleDeleteCustomer = async (id: string, custName: string) => {
     if (!confirm(`Tem certeza que deseja excluir o cliente "${custName}"? Os agendamentos deste cliente também serão removidos.`)) {
@@ -28,7 +44,7 @@ export default function ClientesPage() {
     }
   };
 
-  const handleCreateCustomer = async (e: React.FormEvent) => {
+  const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       alert('Preencha o nome e o WhatsApp do cliente.');
@@ -37,13 +53,28 @@ export default function ClientesPage() {
 
     setIsSubmitting(true);
     try {
-      await createCustomer(name.trim(), phone.trim());
+      if (editingCustomer) {
+        const { error } = await supabase
+          .from('customers')
+          .update({
+            name: name.trim(),
+            phone: phone.trim()
+          })
+          .eq('id', editingCustomer.id);
+
+        if (error) throw error;
+        await refreshData();
+        alert('Cliente atualizado com sucesso!');
+      } else {
+        await createCustomer(name.trim(), phone.trim());
+        alert('Cliente cadastrado com sucesso!');
+      }
       setName('');
       setPhone('');
+      setEditingCustomer(null);
       setIsModalOpen(false);
-      alert('Cliente cadastrado com sucesso!');
     } catch (err: any) {
-      alert(err.message || 'Erro ao cadastrar cliente.');
+      alert(err.message || 'Erro ao salvar cliente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,7 +92,7 @@ export default function ClientesPage() {
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={openNewCustomerModal}
           className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20 shrink-0"
         >
           <UserPlus className="w-4 h-4" />
@@ -118,9 +149,15 @@ export default function ClientesPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs bg-slate-800/80 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-700/60 font-semibold">
-                    Cliente Ativo
-                  </span>
+                  <button
+                    onClick={() => openEditCustomerModal(customer)}
+                    className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-amber-400 hover:border-amber-500 transition flex items-center gap-1 text-xs font-semibold"
+                    title="Editar dados do cliente"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Editar</span>
+                  </button>
+
                   <button
                     onClick={() => handleDeleteCustomer(customer.id, customer.name)}
                     className="p-2 rounded-xl bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500 transition"
@@ -138,7 +175,7 @@ export default function ClientesPage() {
               <Users className="w-10 h-10 mx-auto text-slate-700" />
               <p className="text-sm">Nenhum cliente cadastrado ainda.</p>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={openNewCustomerModal}
                 className="text-xs text-amber-400 hover:underline font-bold"
               >
                 Cadastrar primeiro cliente &rarr;
@@ -148,17 +185,23 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      {/* MODAL: NOVO CLIENTE */}
+      {/* MODAL: NOVO / EDITAR CLIENTE */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
           <form 
-            onSubmit={handleCreateCustomer} 
+            onSubmit={handleSaveCustomer} 
             className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-base text-white">Cadastrar Novo Cliente</h3>
+                {editingCustomer ? (
+                  <Pencil className="w-5 h-5 text-amber-400" />
+                ) : (
+                  <UserPlus className="w-5 h-5 text-amber-400" />
+                )}
+                <h3 className="font-bold text-base text-white">
+                  {editingCustomer ? `Editar Cliente: ${editingCustomer.name}` : 'Cadastrar Novo Cliente'}
+                </h3>
               </div>
               <button 
                 type="button" 
@@ -208,7 +251,7 @@ export default function ClientesPage() {
                 disabled={isSubmitting}
                 className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
               >
-                {isSubmitting ? 'Cadastrando...' : 'Salvar Cliente'}
+                {isSubmitting ? 'Salvando...' : editingCustomer ? 'Atualizar Cliente' : 'Salvar Cliente'}
               </button>
             </div>
           </form>
