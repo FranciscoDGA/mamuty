@@ -1,4 +1,4 @@
-export type ServiceCategory = 'cabelo' | 'barba' | 'combos' | 'tratamentos';
+export type ServiceCategory = 'cabelo' | 'barba' | 'combos' | 'tratamentos' | 'produtos';
 
 export interface Service {
   id: string;
@@ -77,6 +77,7 @@ export interface Customer {
   lastVisit?: string;
   preferredBarberId?: string;
   notes?: string;
+  birthdate?: string;
   createdAt?: string;
 }
 

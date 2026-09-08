@@ -27,6 +27,7 @@ export default function AdminPage() {
     services, 
     updateAppointmentStatus, 
     createAppointment,
+    deleteAppointment,
     refreshData
   } = useApp();
 
@@ -130,9 +131,7 @@ export default function AdminPage() {
   const handleDeleteAppointment = async (id: string, clientName: string) => {
     if (!confirm(`Tem certeza que deseja excluir permanentemente o agendamento de "${clientName}"?`)) return;
     try {
-      const { error } = await supabase.from('appointments').delete().eq('id', id);
-      if (error) throw error;
-      await refreshData();
+      await deleteAppointment(id);
       alert('Agendamento excluído com sucesso.');
     } catch (err: any) {
       alert('Erro ao excluir agendamento: ' + (err.message || err));

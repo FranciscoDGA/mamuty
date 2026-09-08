@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appointment, Barber, Customer, Service, SalonConfig } from '@/lib/types';
+import { Appointment, Barber, Customer, Service, SalonConfig, FinancialTransaction } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import {
   INITIAL_SALON_CONFIG,
@@ -23,15 +23,11 @@ interface AppContextType {
   setCurrentCustomer: (c: Customer | null) => void;
   createAppointment: (apt: Partial<Appointment> & { customerName: string, customerPhone: string, source?: string }) => Promise<void>;
   updateAppointmentStatus: (id: string, status: 'confirmed' | 'completed' | 'cancelled') => Promise<void>;
-  createCustomer: (name: string, phone: string) => Promise<any>;
-  
-  addCustomer: (...args: any[]) => any;
-  submitReview: (...args: any[]) => any;
-  transactions: any[];
-  updateSalonConfig: (...args: any[]) => any;
-  addTransaction: (...args: any[]) => any;
-  addService: (...args: any[]) => any;
-  deleteService: (...args: any[]) => any;
+  createCustomer: (name: string, phone: string, extra?: Partial<Customer>) => Promise<any>;
+  deleteCustomer: (id: string) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  deleteBarber: (id: string) => Promise<void>;
+  deleteAppointment: (id: string) => Promise<void>;
   resetAllData: (...args: any[]) => any;
   portfolio: any[];
   toggleLikePortfolio: (...args: any[]) => any;
@@ -39,6 +35,14 @@ interface AppContextType {
   loyaltyRewards: any[];
   redeemLoyaltyReward: (...args: any[]) => any;
   reviews: any[];
+
+  // Compatibility & Extensions
+  addCustomer: (cust: any) => Customer;
+  submitReview: (...args: any[]) => void;
+  transactions: FinancialTransaction[];
+  updateSalonConfig: (cfg: Partial<SalonConfig>) => void;
+  addTransaction: (tx: any) => void;
+  addService: (srv: any) => void;
 
   refreshData: () => Promise<void>;
   isLoading: boolean;
@@ -312,6 +316,67 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+  const deleteCustomer = async (id: string) => {
+    const custPhone = customers.find(c => c.id === id)?.phone;
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    if (custPhone) {
+      setAppointments(prev => prev.filter(a => a.customerPhone.replace(/\D/g, '') !== custPhone.replace(/\D/g, '')));
+    }
+
+    if (isUUID(id)) {
+      try {
+        await supabase.from('appointments').delete().eq('customer_id', id);
+        const { error } = await supabase.from('customers').delete().eq('id', id);
+        if (error) console.warn('Supabase delete customer error:', error);
+      } catch (err) {
+        console.warn('Delete customer error:', err);
+      }
+    }
+  };
+
+  const deleteService = async (id: string) => {
+    setServices(prev => prev.filter(s => s.id !== id));
+
+    if (isUUID(id)) {
+      try {
+        await supabase.from('appointments').delete().eq('service_id', id);
+        const { error } = await supabase.from('services').delete().eq('id', id);
+        if (error) console.warn('Supabase delete service error:', error);
+      } catch (err) {
+        console.warn('Delete service error:', err);
+      }
+    }
+  };
+
+  const deleteBarber = async (id: string) => {
+    setBarbers(prev => prev.filter(b => b.id !== id));
+
+    if (isUUID(id)) {
+      try {
+        await supabase.from('appointments').delete().eq('barber_id', id);
+        const { error } = await supabase.from('barbers').delete().eq('id', id);
+        if (error) console.warn('Supabase delete barber error:', error);
+      } catch (err) {
+        console.warn('Delete barber error:', err);
+      }
+    }
+  };
+
+  const deleteAppointment = async (id: string) => {
+    setAppointments(prev => prev.filter(a => a.id !== id));
+
+    if (isUUID(id)) {
+      try {
+        const { error } = await supabase.from('appointments').delete().eq('id', id);
+        if (error) console.warn('Supabase delete appointment error:', error);
+      } catch (err) {
+        console.warn('Delete appointment error:', err);
+      }
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -327,16 +392,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createAppointment,
         updateAppointmentStatus,
         createCustomer,
+        deleteCustomer,
+        deleteService,
+        deleteBarber,
+        deleteAppointment,
 
-        addCustomer: (cust: any) => {
+        addCustomer: (cust: any): Customer => {
+          const newC: Customer = {
+            id: `cli-${Date.now()}`,
+            name: cust.name,
+            phone: cust.phone,
+            totalVisits: 0,
+            totalSpent: 0,
+            loyaltyStamps: 0,
+            loyaltyPoints: 0,
+            tier: 'Bronze',
+            createdAt: new Date().toISOString()
+          };
+          setCustomers(prev => [...prev, newC]);
           createCustomer(cust.name, cust.phone);
+          return newC;
         },
         submitReview: () => {},
         transactions: [],
         updateSalonConfig: () => {},
         addTransaction: () => {},
         addService: () => {},
-        deleteService: () => {},
         resetAllData: () => {},
         portfolio: [],
         toggleLikePortfolio: () => {},

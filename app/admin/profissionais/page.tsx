@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Loader2, Plus, X, Trash2, Pencil } from 'lucide-react';
 
 export default function ProfissionaisPage() {
-  const { barbers, refreshData } = useApp();
+  const { barbers, deleteBarber, refreshData } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,9 +93,7 @@ export default function ProfissionaisPage() {
     if (!confirm(`Tem certeza que deseja excluir permanentemente o profissional "${name}"?`)) return;
 
     try {
-      const { error } = await supabase.from('barbers').delete().eq('id', id);
-      if (error) throw error;
-      await refreshData();
+      await deleteBarber(id);
       alert(`Profissional "${name}" excluído com sucesso.`);
     } catch (err: any) {
       alert('Erro ao excluir profissional: ' + (err.message || err));
