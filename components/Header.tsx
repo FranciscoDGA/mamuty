@@ -20,7 +20,8 @@ import {
   Download,
   DollarSign,
   Settings,
-  Award
+  Award,
+  Star
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUserSwitcher }) => {
@@ -78,11 +79,11 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+        <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
           <Link
             href="/"
             onClick={() => setActiveTab('agendar')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
               pathname === '/' && activeTab === 'agendar'
                 ? 'bg-amber-500 text-slate-950 shadow-xs'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -93,20 +94,46 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
 
           <Link
             href="/"
+            onClick={() => setActiveTab('galeria')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+              pathname === '/' && activeTab === 'galeria'
+                ? 'bg-amber-500 text-slate-950 shadow-xs font-bold'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Galeria</span>
+          </Link>
+
+          <Link
+            href="/"
             onClick={() => setActiveTab('fidelidade')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
               pathname === '/' && activeTab === 'fidelidade'
                 ? 'bg-amber-500 text-slate-950 shadow-xs font-bold'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
           >
             <Award className="w-3.5 h-3.5 text-amber-400" />
-            <span>Clube Fidelidade</span>
+            <span>Fidelidade</span>
+          </Link>
+
+          <Link
+            href="/"
+            onClick={() => setActiveTab('avaliacoes')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+              pathname === '/' && activeTab === 'avaliacoes'
+                ? 'bg-amber-500 text-slate-950 shadow-xs font-bold'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 text-amber-400" />
+            <span>Avaliações</span>
           </Link>
 
           <Link
             href="/whatsapp"
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
               pathname === '/whatsapp'
                 ? 'bg-emerald-500 text-white shadow-xs'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -118,7 +145,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
 
           <Link
             href="/admin"
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
               pathname.startsWith('/admin')
                 ? 'bg-amber-500 text-slate-950 shadow-xs'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -248,6 +275,30 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
               <Link
                 href="/"
                 onClick={() => {
+                  setActiveTab('galeria');
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/' && activeTab === 'galeria'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block text-white">Galeria de Cortes & Estilos</span>
+                    <span className="text-xs text-slate-400">Degradês, barbas, visagismo e catálogo</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/"
+                onClick={() => {
                   setActiveTab('fidelidade');
                   setMobileMenuOpen(false);
                 }}
@@ -264,6 +315,54 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
                   <div>
                     <span className="font-bold text-sm block text-white">Clube Fidelidade</span>
                     <span className="text-xs text-slate-400">Consulte seus selos apenas com seu celular</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/"
+                onClick={() => {
+                  setActiveTab('meus-agendamentos');
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/' && activeTab === 'meus-agendamentos'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block text-white">Meus Agendamentos</span>
+                    <span className="text-xs text-slate-400">Consulte ou cancele horários marcados</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href="/"
+                onClick={() => {
+                  setActiveTab('avaliacoes');
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition ${
+                  pathname === '/' && activeTab === 'avaliacoes'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <Star className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block text-white">Avaliações & Opiniões</span>
+                    <span className="text-xs text-slate-400">Opiniões de clientes reais da Mamuty</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />

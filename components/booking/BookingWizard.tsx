@@ -27,6 +27,9 @@ export const BookingWizard: React.FC = () => {
     createAppointment,
     isLoading,
     error,
+    currentCustomer,
+    preselectedBarberId,
+    setPreselectedBarberId,
   } = useApp();
 
   const [step, setStep] = useState<number>(1);
@@ -37,12 +40,30 @@ export const BookingWizard: React.FC = () => {
     return today.toISOString().split('T')[0];
   });
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [customerName, setCustomerName] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>(() => currentCustomer?.name || '');
+  const [customerPhone, setCustomerPhone] = useState<string>(() => currentCustomer?.phone || '');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [scannedBarberParam, setScannedBarberParam] = useState<string | null>(null);
+
+  // Pre-fill customer credentials if logged in or selected
+  useEffect(() => {
+    if (currentCustomer) {
+      if (!customerName) setCustomerName(currentCustomer.name);
+      if (!customerPhone) setCustomerPhone(currentCustomer.phone);
+    }
+  }, [currentCustomer]);
+
+  // Pre-select barber from Gallery or outside click
+  useEffect(() => {
+    if (preselectedBarberId && barbers.length > 0) {
+      const match = barbers.find(b => b.id === preselectedBarberId);
+      if (match) {
+        setSelectedBarber(match);
+      }
+    }
+  }, [preselectedBarberId, barbers]);
 
   // Auto-detect barber from mirror QR code URL param (?barbeiro=...)
   useEffect(() => {
@@ -570,7 +591,7 @@ export const BookingWizard: React.FC = () => {
                 type="tel"
                 value={customerPhone}
                 onChange={e => setCustomerPhone(e.target.value)}
-                placeholder="(11) 99999-9999"
+                placeholder="(94) 98443-9065"
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -595,22 +616,34 @@ export const BookingWizard: React.FC = () => {
       )}
 
       {step === 6 && (
-        <div className="bg-slate-900/80 border border-emerald-500/30 rounded-3xl p-8 text-center space-y-5 animate-in zoom-in-95">
+        <div className="bg-slate-900/80 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 text-center space-y-5 animate-in zoom-in-95">
           <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-2">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-extrabold text-white">Agendamento Confirmado!</h1>
-          <p className="text-slate-400 text-sm">Seu horário foi reservado com sucesso.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Agendamento Confirmado!</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Seu horário na Barbearia Mamuty foi reservado com sucesso.</p>
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-left space-y-2 max-w-sm mx-auto">
-             <p className="text-sm flex justify-between"><span className="text-slate-400">Serviço</span> <span className="font-bold text-amber-400">{selectedService?.name}</span></p>
-             <p className="text-sm flex justify-between"><span className="text-slate-400">Profissional</span> <span className="font-bold text-white">{selectedBarber?.name}</span></p>
-             <p className="text-sm flex justify-between"><span className="text-slate-400">Data</span> <span className="font-bold text-white">{selectedDate?.split('-').reverse().join('/')}</span></p>
-             <p className="text-sm flex justify-between"><span className="text-slate-400">Horário</span> <span className="font-bold text-white">{selectedTime}</span></p>
-             <p className="text-sm flex justify-between"><span className="text-slate-400">Valor</span> <span className="font-bold text-emerald-400">R$ {selectedService?.price}</span></p>
+             <p className="text-xs sm:text-sm flex justify-between"><span className="text-slate-400">Serviço</span> <span className="font-bold text-amber-400">{selectedService?.name}</span></p>
+             <p className="text-xs sm:text-sm flex justify-between"><span className="text-slate-400">Profissional</span> <span className="font-bold text-white">{selectedBarber?.name}</span></p>
+             <p className="text-xs sm:text-sm flex justify-between"><span className="text-slate-400">Data</span> <span className="font-bold text-white">{selectedDate?.split('-').reverse().join('/')}</span></p>
+             <p className="text-xs sm:text-sm flex justify-between"><span className="text-slate-400">Horário</span> <span className="font-bold text-white">{selectedTime}</span></p>
+             <p className="text-xs sm:text-sm flex justify-between border-t border-slate-800/80 pt-2"><span className="text-slate-400">Valor</span> <span className="font-bold text-emerald-400">R$ {selectedService?.price}</span></p>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
+             <a
+               href={`https://wa.me/5594984439065?text=${encodeURIComponent(
+                 `Fala, Hemerson! 💈✂️\n\nAcabei de agendar meu horário pelo app da *Barbearia Mamuty*:\n\n👤 *Cliente:* ${customerName}\n✂️ *Serviço:* ${selectedService?.name}\n💈 *Barbeiro:* ${selectedBarber?.name}\n📅 *Data:* ${selectedDate?.split('-').reverse().join('/')} às ${selectedTime}\n💰 *Valor:* R$ ${selectedService?.price}\n\n*~Mamuty barbearia estilo forte.*`
+               )}`}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="w-full py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition active:scale-95"
+             >
+               <MessageCircle className="w-4 h-4 text-slate-950" />
+               <span>Avisar no WhatsApp (1-Toque)</span>
+             </a>
+
              <button
               onClick={() => {
                 setStep(1);
@@ -620,9 +653,9 @@ export const BookingWizard: React.FC = () => {
                 setCustomerName('');
                 setCustomerPhone('');
               }}
-              className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold"
+              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition"
              >
-               Voltar para o início
+               Novo Agendamento
              </button>
           </div>
         </div>

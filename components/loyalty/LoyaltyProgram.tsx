@@ -74,7 +74,7 @@ export const LoyaltyProgram: React.FC = () => {
               required
               value={phoneSearch}
               onChange={e => setPhoneSearch(e.target.value)}
-              placeholder="Digite seu WhatsApp: (11) 99999-9999"
+              placeholder="Digite seu WhatsApp: (94) 98443-9065"
               className="w-full bg-slate-950 border border-slate-700 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
             />
           </div>

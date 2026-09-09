@@ -145,7 +145,12 @@ function MainContent() {
 
         {/* View Switcher */}
         {activeTab === 'agendar' && <BookingWizard />}
+        {activeTab === 'galeria' && <GalleryView />}
         {activeTab === 'fidelidade' && <LoyaltyProgram />}
+        {activeTab === 'meus-agendamentos' && (
+          <MyAppointments onOpenReviewModal={(apt) => setReviewingAppointment(apt)} />
+        )}
+        {activeTab === 'avaliacoes' && <ReviewsView />}
         {activeTab === 'admin' && (
           <div className="text-center py-12 space-y-4">
             <h2 className="text-xl font-bold text-white">Painel Administrativo Mamuty</h2>

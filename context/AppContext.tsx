@@ -9,6 +9,9 @@ import {
   INITIAL_BARBERS,
   INITIAL_CUSTOMERS,
   INITIAL_APPOINTMENTS,
+  INITIAL_PORTFOLIO,
+  INITIAL_LOYALTY_REWARDS,
+  INITIAL_REVIEWS,
 } from '@/lib/data';
 
 interface AppContextType {
@@ -30,16 +33,17 @@ interface AppContextType {
   deleteAppointment: (id: string) => Promise<void>;
   resetAllData: (...args: any[]) => any;
   portfolio: any[];
-  toggleLikePortfolio: (...args: any[]) => any;
-  setPreselectedBarberId: (...args: any[]) => any;
+  toggleLikePortfolio: (photoId: string) => void;
+  preselectedBarberId: string | null;
+  setPreselectedBarberId: (barberId: string | null) => void;
   loyaltyRewards: any[];
-  redeemLoyaltyReward: (...args: any[]) => any;
+  redeemLoyaltyReward: (rewardId: string, customerId: string) => boolean;
   reviews: any[];
 
   // Compatibility & Extensions
   addCustomer: (cust: any) => Customer;
   addLoyaltyStamp: (phone: string) => Promise<Customer | null>;
-  submitReview: (...args: any[]) => void;
+  submitReview: (review: any) => void;
   transactions: FinancialTransaction[];
   updateSalonConfig: (cfg: Partial<SalonConfig>) => void;
   addTransaction: (tx: any) => void;
@@ -60,6 +64,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [salonConfig] = useState<SalonConfig>(INITIAL_SALON_CONFIG);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const [portfolio, setPortfolio] = useState<any[]>(INITIAL_PORTFOLIO);
+  const [loyaltyRewards, setLoyaltyRewards] = useState<any[]>(INITIAL_LOYALTY_REWARDS);
+  const [reviews, setReviews] = useState<any[]>(INITIAL_REVIEWS);
+  const [preselectedBarberId, setPreselectedBarberId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -449,18 +457,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return newC;
         },
         addLoyaltyStamp,
-        submitReview: () => {},
+        submitReview: (rev: any) => {
+          const newRev = {
+            id: `rev-${Date.now()}`,
+            customerName: rev.customerName,
+            barberId: rev.barberId,
+            barberName: rev.barberName,
+            rating: rev.rating,
+            comment: rev.comment,
+            tags: rev.tags || [],
+            createdAt: new Date().toISOString(),
+          };
+          setReviews(prev => [newRev, ...prev]);
+        },
         transactions: [],
         updateSalonConfig: () => {},
         addTransaction: () => {},
         addService: () => {},
         resetAllData: () => {},
-        portfolio: [],
-        toggleLikePortfolio: () => {},
-        setPreselectedBarberId: () => {},
-        loyaltyRewards: [],
-        redeemLoyaltyReward: () => {},
-        reviews: [],
+        portfolio,
+        toggleLikePortfolio: (photoId: string) => {
+          setPortfolio(prev =>
+            prev.map(item =>
+              item.id === photoId ? { ...item, likesCount: item.likesCount + 1 } : item
+            )
+          );
+        },
+        preselectedBarberId,
+        setPreselectedBarberId,
+        loyaltyRewards,
+        redeemLoyaltyReward: (rewardId: string, customerId: string) => {
+          const reward = loyaltyRewards.find(r => r.id === rewardId);
+          if (!reward || !currentCustomer) return false;
+          if (currentCustomer.loyaltyStamps < (reward.stampsRequired || 0)) return false;
+
+          const updatedCustomer: Customer = {
+            ...currentCustomer,
+            loyaltyStamps: Math.max(0, currentCustomer.loyaltyStamps - (reward.stampsRequired || 0)),
+          };
+          setCurrentCustomer(updatedCustomer);
+          setCustomers(prev => prev.map(c => c.id === customerId ? updatedCustomer : c));
+          return true;
+        },
+        reviews,
 
         refreshData: fetchData,
         isLoading,
