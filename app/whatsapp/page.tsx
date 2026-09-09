@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { 
@@ -9,67 +9,39 @@ import {
   CheckCheck, 
   Loader2, 
   Scissors, 
-  Mic, 
-  MicOff, 
-  Sparkles, 
   Calendar, 
   Clock, 
-  MapPin, 
   User, 
   X,
   PhoneCall,
-  Play,
-  Pause,
-  Volume2
+  MessageCircle,
+  Sparkles,
+  QrCode,
+  CreditCard,
+  Banknote,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import { Barber, Service } from '@/lib/types';
+import { ChatMessage, DialogStep, BookingDraft } from '@/lib/conversation/types';
+import { processUserMessage } from '@/lib/conversation/engine';
 
-type Message = {
-  id: string;
-  sender: 'user' | 'bot';
-  text: string;
-  options?: { label: string; action: () => void }[];
-  time: string;
-  isAudio?: boolean;
-  audioDuration?: string;
-  audioDurationSeconds?: number;
-  transcription?: string;
-};
+export default function WhatsAppSimulationPage() {
+  const { 
+    services, 
+    barbers, 
+    appointments, 
+    createAppointment, 
+    updateAppointmentStatus, 
+    currentCustomer 
+  } = useApp();
 
-export default function WhatsAppDemo() {
-  const { services, barbers, appointments, createAppointment, salonConfig } = useApp();
-  
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  
-  // Voice Recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [activePlaybackId, setActivePlaybackId] = useState<string | null>(null);
-  const [playbackProgress, setPlaybackProgress] = useState<Record<string, number>>({});
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
-  
+  const [dialogStep, setDialogStep] = useState<DialogStep>('IDLE');
+  const [bookingDraft, setBookingDraft] = useState<BookingDraft>({});
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const recordedTranscriptRef = useRef<string>('');
-
-  // Quick Action Chips
-  const quickChips = [
-    'Quais os preços dos serviços?',
-    'Tem vaga para hoje?',
-    'Quem são os barbeiros?',
-    'Qual o endereço da barbearia?'
-  ];
-
-  // Quick Audio Presets
-  const audioPresets = [
-    { label: '🎙️ "Tem vaga com Hemerson hoje?"', text: 'Olá, gostaria de saber se tem vaga pra corte hoje com o Hemerson!' },
-    { label: '🎙️ "Quanto custa corte e barba?"', text: 'Boa tarde, quanto sai o combo de corte de cabelo e barba?' },
-    { label: '🎙️ "Quero agendar no sábado de manhã"', text: 'Fala galera, quero marcar um horário no sábado de manhã, como faço?' }
-  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,509 +51,447 @@ export default function WhatsAppDemo() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Initial welcome message
+  // Mensagem inicial de boas-vindas do assistente Marcos
   useEffect(() => {
-    const welcomeTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
     setMessages([
       {
-        id: 'welcome-1',
-        sender: 'bot',
-        text: `Fala, tudo bem? Bem-vindo à *Mamuty Barbearia*! 💈✂️\n\nEu sou o *Marcos*, o funcionário digital e assistente da Mamuty Barbearia. Você pode me mandar mensagem de texto ou *gravar um áudio*, que eu compreendo sua voz perfeitamente! Como posso te ajudar hoje?\n\n• Agendar um horário\n• Preços e serviços\n• Barbeiros disponíveis (mamuty.barber e Doglas)\n• Endereço e funcionamento`,
-        time: welcomeTime,
-        options: [
-          { label: '💈 Ver serviços e preços', action: () => handleSendText('Quais os preços dos serviços?') },
-          { label: '🕒 Tem vaga hoje?', action: () => handleSendText('Tem vaga para hoje?') },
-          { label: '✂️ Agendar horário agora', action: () => handleSendText('Quero agendar um corte') }
+        id: 'msg-init-1',
+        sender: 'marcos',
+        text: `Olá! 👋 Sou o *Marcos*, assistente digital da *Barbearia Mamuty*.\n\nEstou aqui para ajudar você a agendar seu horário sem precisar esperar na barbearia!\n\nVocê pode clicar nos botões rápidos abaixo ou escrever o que precisa:`,
+        timestamp: timeStr,
+        intent: 'SAUDACAO',
+        quickReplies: [
+          { label: 'Quero agendar', action: 'INICIAR_AGENDAMENTO' },
+          { label: 'Tem vaga hoje?', action: 'VER_HORARIOS_HOJE' },
+          { label: 'Quanto custa o corte?', action: 'VER_SERVICOS' },
+          { label: 'Vocês estão abertos hoje?', action: 'VER_FUNCIONAMENTO' }
         ]
       }
     ]);
   }, []);
 
-  const addBotMessage = (
-    text: string, 
-    options?: { label: string; action: () => void }[], 
-    isAudio = false, 
-    durationSecs = 7
-  ) => {
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      sender: 'bot',
-      text,
-      options,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isAudio,
-      audioDurationSeconds: durationSecs,
-      audioDuration: `0:0${durationSecs}`,
-      transcription: isAudio ? text : undefined
-    }]);
-  };
+  const handleSendMessage = async (textToSend?: string, actionPayload?: any) => {
+    const text = (textToSend || inputText).trim();
+    if (!text && !actionPayload) return;
 
-  const handleSendText = async (textToSend?: string) => {
-    const messageContent = (textToSend || inputText).trim();
-    if (!messageContent) return;
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-    if (!textToSend) setInputText('');
-
-    const userMsgTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    // Add user message immediately
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: messageContent,
-      time: userMsgTime
-    }]);
-
-    setIsTyping(true);
-
-    try {
-      // Call AI Chat API
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            ...messages.map(m => ({
-              role: m.sender === 'user' ? 'user' : 'assistant',
-              content: typeof m.text === 'string' ? m.text : 'Mensagem'
-            })),
-            { role: 'user', content: messageContent }
-          ]
-        })
-      });
-
-      const data = await res.json();
-      setIsTyping(false);
-
-      if (data && data.reply) {
-        const dynamicOptions = data.options?.map((opt: any) => ({
-          label: opt.label,
-          action: () => handleSendText(opt.text)
-        }));
-
-        addBotMessage(data.reply, dynamicOptions);
-      } else {
-        addBotMessage('Opa! Como posso ajudar você a agendar na Mamuty?');
-      }
-    } catch (err) {
-      setIsTyping(false);
-      addBotMessage('Tive uma oscilação na conexão, mas você pode me dizer qual serviço e horário deseja agendar!');
-    }
-  };
-
-  // Audio Playback Simulation
-  const handleTogglePlayAudio = (msgId: string, durationSecs: number = 8) => {
-    if (activePlaybackId === msgId) {
-      // Pause
-      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-      setActivePlaybackId(null);
-      return;
-    }
-
-    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-    setActivePlaybackId(msgId);
-    
-    // Speech synthesis audio feedback if available
-    const msg = messages.find(m => m.id === msgId);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && msg) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(msg.transcription || msg.text);
-      utterance.lang = 'pt-BR';
-      utterance.rate = playbackSpeed;
-      utterance.onend = () => {
-        setActivePlaybackId(null);
-        setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
+    // 1. Inserir mensagem do usuário na tela se for texto
+    if (text) {
+      const userMsg: ChatMessage = {
+        id: 'user-' + Date.now(),
+        sender: 'user',
+        text,
+        timestamp: timeStr
       };
-      window.speechSynthesis.speak(utterance);
+      setMessages(prev => [...prev, userMsg]);
+      setInputText('');
     }
-
-    let progress = playbackProgress[msgId] || 0;
-    if (progress >= 100) progress = 0;
-
-    const intervalMs = 100 / (durationSecs * 10 * playbackSpeed);
-    playbackTimerRef.current = setInterval(() => {
-      progress += 1;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(playbackTimerRef.current!);
-        setActivePlaybackId(null);
-      }
-      setPlaybackProgress(prev => ({ ...prev, [msgId]: progress }));
-    }, 100 / playbackSpeed);
-  };
-
-  // Send Simulated or Transcribed Audio Message
-  const handleSendAudioMessage = (spokenText: string, durationSeconds: number) => {
-    const userMsgTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formattedDuration = `0:${durationSeconds < 10 ? '0' : ''}${durationSeconds}`;
-
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: spokenText,
-      time: userMsgTime,
-      isAudio: true,
-      audioDuration: formattedDuration,
-      audioDurationSeconds: durationSeconds,
-      transcription: spokenText
-    }]);
 
     setIsTyping(true);
 
-    // Call API with transcribed text
+    // Simulação do tempo natural de resposta do WhatsApp (400ms a 700ms)
     setTimeout(async () => {
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              ...messages.map(m => ({
-                role: m.sender === 'user' ? 'user' : 'assistant',
-                content: m.transcription || m.text
-              })),
-              { role: 'user', content: spokenText }
-            ]
-          })
-        });
+        const result = processUserMessage(
+          text,
+          {
+            services,
+            barbers,
+            appointments,
+            currentCustomer,
+            step: dialogStep,
+            draft: bookingDraft
+          },
+          actionPayload
+        );
 
-        const data = await res.json();
-        setIsTyping(false);
-
-        if (data && data.reply) {
-          const dynamicOptions = data.options?.map((opt: any) => ({
-            label: opt.label,
-            action: () => handleSendText(opt.text)
-          }));
-
-          // Bot replies with an audio voice note if it was an audio input!
-          addBotMessage(data.reply, dynamicOptions, true, 8);
-        } else {
-          addBotMessage('Áudio recebido e processado! 🎧 Como prefere prosseguir com seu agendamento?', undefined, true, 5);
-        }
-      } catch (err) {
-        setIsTyping(false);
-        addBotMessage('Recebi seu áudio! Temos vagas hoje às 15:30 e 17:00 com o Carlos. Qual horário prefere?');
-      }
-    }, 1200);
-  };
-
-  // Real Speech Recognition or Simulated Recording
-  const handleToggleRecording = () => {
-    if (isRecording) {
-      // Stop recording
-      setIsRecording(false);
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      const finalDuration = Math.max(recordingSeconds, 3);
-      const text = recordedTranscriptRef.current.trim() || 'Opa, tudo bem? Queria saber os horários disponíveis com o Carlos hoje à tarde!';
-      
-      handleSendAudioMessage(text, finalDuration);
-      setRecordingSeconds(0);
-      recordedTranscriptRef.current = '';
-    } else {
-      // Start recording
-      setIsRecording(true);
-      setRecordingSeconds(0);
-      recordedTranscriptRef.current = '';
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds(s => s + 1);
-      }, 1000);
-
-      // Try browser SpeechRecognition if available
-      if (typeof window !== 'undefined') {
-        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (SpeechRec) {
-          try {
-            const rec = new SpeechRec();
-            rec.lang = 'pt-BR';
-            rec.continuous = true;
-            rec.interimResults = true;
-            rec.onresult = (event: any) => {
-              let currentTranscript = '';
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                currentTranscript += event.results[i][0].transcript;
-              }
-              if (currentTranscript) {
-                recordedTranscriptRef.current = currentTranscript;
-              }
-            };
-            rec.start();
-            recognitionRef.current = rec;
-          } catch (e) {
-            console.log('Speech recognition not started, fallback to simulated transcription', e);
+        // Se a ação requereu persistência real no Supabase
+        if (result.actionToExecute) {
+          if (result.actionToExecute.type === 'CREATE_APPOINTMENT') {
+            try {
+              await createAppointment(result.actionToExecute.payload);
+            } catch (err: any) {
+              console.error('Erro na criação pelo WhatsApp:', err);
+              result.reply.text = `⚠️ Ops! ${err.message || 'Houve um imprevisto ao gravar o horário no sistema.'}`;
+            }
+          } else if (result.actionToExecute.type === 'CANCEL_APPOINTMENT') {
+            try {
+              await updateAppointmentStatus(result.actionToExecute.payload.id, 'cancelled');
+            } catch (err: any) {
+              console.error('Erro no cancelamento pelo WhatsApp:', err);
+            }
           }
         }
+
+        setDialogStep(result.nextStep);
+        setBookingDraft(result.nextDraft);
+        setMessages(prev => [...prev, result.reply]);
+      } catch (err: any) {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: 'err-' + Date.now(),
+            sender: 'marcos',
+            text: 'Desculpe, tive uma oscilação na consulta da agenda. Por favor, tente novamente.',
+            timestamp: timeStr
+          }
+        ]);
+      } finally {
+        setIsTyping(false);
       }
+    }, 550);
+  };
+
+  const handleQuickActionClick = (action: string, payload?: any, label?: string) => {
+    if (label) {
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const userMsg: ChatMessage = {
+        id: 'user-' + Date.now(),
+        sender: 'user',
+        text: label,
+        timestamp: timeStr
+      };
+      setMessages(prev => [...prev, userMsg]);
     }
+    handleSendMessage('', { action, data: payload });
   };
 
   return (
-    <div className="min-h-screen bg-[#070a12] md:bg-slate-900 flex flex-col md:py-6 items-center">
-      {/* Desktop Top Return Link */}
-      <div className="hidden md:flex items-center justify-between w-full max-w-md mb-3 px-2">
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-amber-400 bg-slate-800/90 hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 transition"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Voltar para o Início</span>
-        </Link>
-        <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5" /> Assistente IA Ativo
-        </span>
-      </div>
+    <div className="max-w-2xl mx-auto h-[92vh] sm:h-[86vh] flex flex-col bg-slate-950 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden font-sans">
+      
+      {/* 1. Header Oficial do WhatsApp */}
+      <div className="bg-[#1f2c34] px-4 py-3 border-b border-slate-700/60 flex items-center justify-between z-10 shrink-0 shadow-md">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="p-1 text-slate-300 hover:text-white rounded-lg transition" title="Voltar ao início">
+            <ChevronLeft className="w-6 h-6" />
+          </Link>
 
-      {/* Phone Mockup Container */}
-      <div className="w-full h-screen md:h-[820px] max-h-screen md:max-w-md bg-[#efeae2] md:rounded-[2.5rem] md:shadow-2xl overflow-hidden flex flex-col relative md:border-[8px] border-slate-800">
-        
-        {/* WhatsApp Header */}
-        <div className="bg-[#008069] text-white p-3 flex items-center justify-between z-10 shadow-md shrink-0">
-          <div className="flex items-center gap-2.5">
-            <Link 
-              href="/" 
-              className="p-1 -ml-1 rounded-full hover:bg-black/10 transition"
-              title="Voltar ao Início"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </Link>
-            <div className="w-10 h-10 rounded-full bg-black overflow-hidden shrink-0 border border-white/30">
-               <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-500 bg-black shadow-md">
+              <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-bold text-sm leading-tight">Marcos</h1>
-                <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-              </div>
-              <p className="text-[10px] text-white/90">Assistente da Mamuty Barbearia &bull; Online</p>
-            </div>
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#1f2c34] rounded-full"></span>
           </div>
 
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-bold text-white text-sm sm:text-base leading-tight">Mamuty Barbearia</h1>
+              <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold uppercase">
+                Simulação
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-400 font-medium leading-tight">
+              ● Online &bull; Marcos (Assistente da Barbearia)
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <Link
-            href="/"
-            className="text-xs bg-black/20 hover:bg-black/30 text-white px-3 py-1 rounded-lg transition font-semibold"
+            href="/admin"
+            className="text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1"
+            title="Abrir Painel Administrativo"
           >
-            Fechar ✕
+            <span>Ver Admin</span>
           </Link>
+          <a
+            href="https://wa.me/5594984439065"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 text-slate-300 hover:text-emerald-400 transition"
+            title="Ligar ou falar no WhatsApp real"
+          >
+            <PhoneCall className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+
+      {/* 2. Barra de Sugestões de Cenários de Teste */}
+      <div className="bg-[#121b22] px-3 py-2 border-b border-slate-800/80 flex items-center gap-2 overflow-x-auto text-[11px] shrink-0 no-scrollbar">
+        <span className="text-slate-400 font-bold uppercase text-[9px] whitespace-nowrap pl-1">Cenários:</span>
+        <button
+          onClick={() => handleSendMessage('Vocês estão abertos hoje?')}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 rounded-full whitespace-nowrap transition border border-slate-700/60"
+        >
+          "Vocês estão abertos?"
+        </button>
+        <button
+          onClick={() => handleSendMessage('Quanto custa o corte?')}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 rounded-full whitespace-nowrap transition border border-slate-700/60"
+        >
+          "Quanto custa o corte?"
+        </button>
+        <button
+          onClick={() => handleSendMessage('Tem vaga hoje?')}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 rounded-full whitespace-nowrap transition border border-slate-700/60"
+        >
+          "Tem vaga hoje?"
+        </button>
+        <button
+          onClick={() => handleSendMessage('Quero marcar um horário')}
+          className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-2.5 py-1 rounded-full whitespace-nowrap transition border border-amber-500/40 font-bold"
+        >
+          "Quero marcar"
+        </button>
+        <button
+          onClick={() => handleSendMessage('Quero cancelar meu horário')}
+          className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 px-2.5 py-1 rounded-full whitespace-nowrap transition border border-rose-900/50"
+        >
+          "Quero cancelar"
+        </button>
+        <button
+          onClick={() => handleSendMessage('Quero falar com alguém')}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 rounded-full whitespace-nowrap transition border border-slate-700/60"
+        >
+          "Falar com humano"
+        </button>
+      </div>
+
+      {/* 3. Área de Mensagens (Estilo Fundo WhatsApp) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0b141a] bg-opacity-95 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
+        {/* Aviso de Ambiente Simulado */}
+        <div className="flex justify-center">
+          <span className="bg-[#182229] text-slate-400 text-[10px] font-medium px-3 py-1 rounded-lg border border-slate-800 text-center shadow-xs max-w-xs">
+            🔒 As mensagens simulam o atendimento do WhatsApp conectando diretamente na base de dados do Supabase.
+          </span>
         </div>
 
-        {/* Quick Suggestion Chips on Top of Chat */}
-        <div className="bg-slate-100/90 border-b border-slate-200/80 p-2 overflow-x-auto scrollbar-none flex items-center gap-1.5 shrink-0">
-          {quickChips.map((chip, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSendText(chip)}
-              className="text-[11px] whitespace-nowrap bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-300 rounded-full px-3 py-1 shadow-xs transition active:scale-95"
+        {messages.map((msg) => {
+          const isUser = msg.sender === 'user';
+          return (
+            <div
+              key={msg.id}
+              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} animate-in fade-in`}
             >
-              {chip}
-            </button>
-          ))}
-        </div>
+              <div
+                className={`max-w-[85%] sm:max-w-[78%] rounded-2xl p-3 shadow-md relative ${
+                  isUser
+                    ? 'bg-[#005c4b] text-white rounded-tr-none'
+                    : 'bg-[#202c33] text-slate-100 rounded-tl-none border border-slate-700/40'
+                }`}
+              >
+                {/* Texto da mensagem */}
+                <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">
+                  {msg.text}
+                </p>
 
-        {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat opacity-95">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[88%] sm:max-w-[82%] rounded-2xl p-3 text-xs sm:text-sm shadow-sm relative ${
-                msg.sender === 'user' 
-                  ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' 
-                  : 'bg-white text-slate-800 rounded-tl-none'
-              }`}>
-                {msg.isAudio ? (
-                  <div className="w-60 sm:w-72">
-                    {/* Audio Player Header */}
-                    <div className="flex items-center gap-2.5">
-                      {/* Play / Pause Toggle Button */}
-                      <button
-                        onClick={() => handleTogglePlayAudio(msg.id, msg.audioDurationSeconds || 7)}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition shrink-0 active:scale-90 shadow-sm ${
-                          msg.sender === 'user'
-                            ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                            : 'bg-[#008069] text-white hover:bg-[#00705c]'
-                        }`}
-                        title={activePlaybackId === msg.id ? 'Pausar' : 'Ouvir áudio'}
-                      >
-                        {activePlaybackId === msg.id ? (
-                          <Pause className="w-4 h-4 fill-current" />
-                        ) : (
-                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                        )}
-                      </button>
+                {/* COMPONENTES INTERATIVOS CONVERSACIONAIS */}
 
-                      {/* Sound Waveform Visualization */}
-                      <div className="flex-1 flex flex-col gap-1">
-                        <div className="flex items-center gap-0.5 h-7">
-                          {[
-                            35, 60, 25, 80, 50, 90, 65, 40, 85, 55, 75, 30, 95, 60, 40, 85, 100, 70, 45, 80, 35, 65, 30, 75, 50, 25
-                          ].map((h, barIdx, arr) => {
-                            const barPct = (barIdx / arr.length) * 100;
-                            const isFilled = (playbackProgress[msg.id] || 0) >= barPct;
-                            return (
-                              <span
-                                key={barIdx}
-                                style={{ height: `${h}%` }}
-                                className={`w-1 rounded-full transition-colors duration-150 ${
-                                  isFilled
-                                    ? msg.sender === 'user' ? 'bg-emerald-800' : 'bg-[#008069]'
-                                    : 'bg-slate-300'
-                                }`}
-                              />
-                            );
-                          })}
-                        </div>
-
-                        {/* Audio Timer & Speed Selector */}
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                          <span>
-                            {activePlaybackId === msg.id
-                              ? `0:0${Math.floor(((playbackProgress[msg.id] || 0) / 100) * (msg.audioDurationSeconds || 7))}`
-                              : msg.audioDuration || '0:07'}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPlaybackSpeed(s => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1));
-                            }}
-                            className="bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[9px] transition"
-                            title="Velocidade de reprodução"
-                          >
-                            {playbackSpeed}x
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Contact / Audio Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-slate-200/70 flex items-center justify-center shrink-0">
-                        <Mic className={`w-4 h-4 ${activePlaybackId === msg.id ? 'text-emerald-600 animate-pulse' : 'text-slate-500'}`} />
-                      </div>
+                {/* Lista de Serviços */}
+                {msg.component === 'services_list' && msg.payload?.services && (
+                  <div className="mt-3 pt-2 border-t border-slate-700/60 space-y-2">
+                    <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                      Escolha um serviço para agendar:
+                    </p>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {msg.payload.services.map((s: any) => (
+                        <button
+                          key={s.id}
+                          onClick={() => handleQuickActionClick('ESCOLHER_SERVICO', { serviceId: s.id }, `Quero ${s.name}`)}
+                          className="w-full text-left p-2.5 rounded-xl bg-[#111b21] hover:bg-slate-800 border border-slate-700 text-xs text-white transition flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-bold text-amber-300">{s.name}</p>
+                            <p className="text-[10px] text-slate-400">{s.durationMinutes} min</p>
+                          </div>
+                          <span className="font-black text-emerald-400 text-xs">R$ {s.price}</span>
+                        </button>
+                      ))}
                     </div>
-
-                    {/* Transcription Box */}
-                    {msg.transcription && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/70 text-[11px] text-slate-600 leading-relaxed">
-                        <span className="font-semibold text-emerald-800 text-[10px] uppercase tracking-wide block mb-0.5">
-                          🎙️ Transcrição por IA:
-                        </span>
-                        &ldquo;{msg.transcription}&rdquo;
-                      </div>
-                    )}
                   </div>
-                ) : (
-                  <div className="pr-12 pb-1 whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                 )}
-                
-                {/* Action options buttons */}
-                {msg.options && (
-                  <div className="mt-2.5 space-y-1.5 flex flex-col border-t border-slate-200 pt-2">
-                    {msg.options.map((opt, i) => (
-                      <button 
-                        key={i} 
-                        onClick={opt.action}
-                        className="text-left bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl text-[#008069] font-bold text-xs transition active:bg-emerald-200 border border-emerald-200/60"
+
+                {/* Lista de Barbeiros */}
+                {msg.component === 'barbers_list' && (
+                  <div className="mt-3 pt-2 border-t border-slate-700/60 space-y-2">
+                    <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                      Selecione o profissional:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {barbers.map((b: any) => (
+                        <button
+                          key={b.id}
+                          onClick={() => handleQuickActionClick('ESCOLHER_BARBEIRO', { barberName: b.name }, `Prefiro com ${b.name}`)}
+                          className="p-2.5 rounded-xl bg-[#111b21] hover:bg-slate-800 border border-slate-700 text-xs text-left text-white transition flex items-center gap-2.5"
+                        >
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-black shrink-0 border border-amber-500/40">
+                            <img src={b.avatarUrl || '/logo.png'} alt={b.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-white text-xs">{b.name}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{b.role}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de Vagas Livres */}
+                {msg.component === 'slots_list' && msg.payload?.slots && (
+                  <div className="mt-3 pt-2 border-t border-slate-700/60 space-y-2">
+                    <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                      Toque no horário desejado:
+                    </p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {msg.payload.slots.slice(0, 9).map((slot: any) => (
+                        <button
+                          key={slot.horario}
+                          onClick={() => handleQuickActionClick('ESCOLHER_HORARIO', { time: slot.horario }, `Quero às ${slot.horario}`)}
+                          className="py-2 px-1 rounded-xl bg-[#111b21] hover:bg-amber-500 hover:text-slate-950 border border-slate-700 text-xs font-bold text-white transition text-center"
+                        >
+                          {slot.horario}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Formas de Pagamento */}
+                {msg.component === 'payment_methods' && (
+                  <div className="mt-3 pt-2 border-t border-slate-700/60 grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'pix', label: 'PIX', icon: QrCode },
+                      { id: 'dinheiro', label: 'Dinheiro', icon: Banknote },
+                      { id: 'debito', label: 'Débito', icon: CreditCard },
+                      { id: 'credito', label: 'Crédito', icon: CreditCard }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => handleQuickActionClick('ESCOLHER_PAGAMENTO', { method: m.id }, `Vou pagar com ${m.label}`)}
+                        className="p-2 rounded-xl bg-[#111b21] hover:bg-slate-800 border border-slate-700 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition"
                       >
-                        {opt.label}
+                        <m.icon className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{m.label}</span>
                       </button>
                     ))}
                   </div>
                 )}
 
-                <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[10px] text-slate-400">
-                  {msg.time}
-                  {msg.sender === 'user' && <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />}
+                {/* Resumo Final antes de Confirmar */}
+                {msg.component === 'summary_card' && msg.payload?.draft && (
+                  <div className="mt-3 p-3 rounded-xl bg-[#111b21] border border-amber-500/40 space-y-1.5 text-xs">
+                    <p className="font-bold text-amber-400 border-b border-slate-800 pb-1">Resumo do Agendamento:</p>
+                    <p className="flex justify-between text-slate-300"><span>Serviço:</span> <strong className="text-white">{msg.payload.draft.service?.name}</strong></p>
+                    <p className="flex justify-between text-slate-300"><span>Profissional:</span> <strong className="text-white">{msg.payload.draft.barber?.name}</strong></p>
+                    <p className="flex justify-between text-slate-300"><span>Data:</span> <strong className="text-white">{msg.payload.draft.date?.split('-').reverse().join('/')}</strong></p>
+                    <p className="flex justify-between text-slate-300"><span>Horário:</span> <strong className="text-white">{msg.payload.draft.time}</strong></p>
+                    <p className="flex justify-between text-slate-300"><span>Pagamento:</span> <strong className="text-amber-300 uppercase">{msg.payload.draft.paymentMethod}</strong></p>
+                    <p className="flex justify-between text-slate-300 border-t border-slate-800 pt-1"><span>Valor:</span> <strong className="text-emerald-400">R$ {msg.payload.draft.service?.price}</strong></p>
+                  </div>
+                )}
+
+                {/* Card de Confirmação Concluída */}
+                {msg.component === 'confirmed_card' && (
+                  <div className="mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Salvo no Supabase & Visível no Admin</span>
+                    </div>
+                    <Link
+                      href="/admin"
+                      className="block w-full text-center py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
+                    >
+                      Conferir na Agenda do Dono (/admin) &rarr;
+                    </Link>
+                  </div>
+                )}
+
+                {/* Card de Cancelamento */}
+                {msg.component === 'cancel_card' && msg.payload?.appointment && (
+                  <div className="mt-3 p-3 rounded-xl bg-rose-950/40 border border-rose-900/50 space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-rose-400 font-bold">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Agendamento Localizado:</span>
+                    </div>
+                    <p className="text-slate-300">
+                      {msg.payload.appointment.date.split('-').reverse().join('/')} às {msg.payload.appointment.time} &bull; {msg.payload.appointment.serviceNames?.[0]} com {msg.payload.appointment.barberName}
+                    </p>
+                  </div>
+                )}
+
+                {/* Encaminhamento para Humano */}
+                {msg.component === 'human_handoff' && (
+                  <div className="mt-3 pt-2 border-t border-slate-700/60">
+                    <a
+                      href="https://wa.me/5594984439065?text=Ol%C3%A1%2C%20gostaria%20de%20falar%20com%20um%20atendente%20da%20Barbearia%20Mamuty."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-md"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Falar com Hemerson (+55 94 98443-9065)</span>
+                    </a>
+                  </div>
+                )}
+
+                {/* Timestamp & Checks */}
+                <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400">
+                  <span>{msg.timestamp}</span>
+                  {isUser && <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />}
                 </div>
               </div>
+
+              {/* Botões de Respostas Rápidas (Quick Replies) */}
+              {msg.quickReplies && msg.quickReplies.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2 max-w-[85%]">
+                  {msg.quickReplies.map((qr, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuickActionClick(qr.action, qr.payload, qr.label)}
+                      className="bg-[#1f2c34] hover:bg-[#00a884] text-slate-200 hover:text-white border border-slate-700/60 hover:border-transparent px-3 py-1.5 rounded-full text-xs font-semibold transition active:scale-95 shadow-xs"
+                    >
+                      {qr.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          );
+        })}
 
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div className="flex items-center gap-1.5 bg-white p-2.5 rounded-2xl rounded-tl-none w-20 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+        {/* Indicador de Digitando */}
+        {isTyping && (
+          <div className="flex items-start gap-2 animate-in fade-in">
+            <div className="bg-[#202c33] text-slate-300 rounded-2xl rounded-tl-none px-4 py-2.5 border border-slate-700/40 flex items-center gap-2">
+              <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+              <span className="text-xs text-slate-400 italic font-medium">Marcos está digitando...</span>
             </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Audio Presets Shortcut Bar */}
-        <div className="bg-slate-50 border-t border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
-          <span className="text-[10px] font-bold uppercase text-slate-400 shrink-0 flex items-center gap-1">
-            <Mic className="w-3 h-3 text-emerald-600" /> Simular Áudio:
-          </span>
-          {audioPresets.map((preset, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSendAudioMessage(preset.text, 6)}
-              className="text-[11px] whitespace-nowrap bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full font-medium transition active:scale-95 shrink-0"
-              title="Clique para enviar este áudio gravado"
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Live Audio Recording Banner */}
-        {isRecording && (
-          <div className="bg-rose-50 border-t border-rose-200 p-2.5 flex items-center justify-between px-4 text-xs animate-pulse text-rose-700">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-              <span className="font-bold">Gravando sua voz... 0:0{recordingSeconds}</span>
-            </div>
-            <button
-              onClick={handleToggleRecording}
-              className="text-rose-600 font-extrabold hover:underline active:scale-95"
-            >
-              Clique para Enviar Áudio ➔
-            </button>
           </div>
         )}
 
-        {/* Chat Input Bar */}
-        <div className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-slate-300 shrink-0">
-          <input 
-            type="text" 
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
-            placeholder={isRecording ? 'Gravando áudio...' : 'Mensagem no WhatsApp...'}
-            disabled={isRecording}
-            className="flex-1 bg-white border border-slate-300 rounded-full px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#008069]"
-          />
-
-          {inputText.trim() ? (
-            <button 
-              onClick={() => handleSendText()}
-              className="w-10 h-10 rounded-full bg-[#008069] hover:bg-[#00705c] text-white flex items-center justify-center transition shadow-md shrink-0 active:scale-95"
-              title="Enviar mensagem"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          ) : (
-            <button 
-              onClick={handleToggleRecording}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-md shrink-0 active:scale-95 ${
-                isRecording 
-                  ? 'bg-rose-600 text-white animate-bounce' 
-                  : 'bg-[#008069] hover:bg-[#00705c] text-white'
-              }`}
-              title={isRecording ? 'Parar e enviar áudio' : 'Gravar áudio com sua voz'}
-            >
-              <Mic className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <div ref={messagesEndRef} />
       </div>
+
+      {/* 4. Campo de Entrada de Mensagem */}
+      <div className="bg-[#202c33] p-3 border-t border-slate-800 flex items-center gap-2 shrink-0">
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSendMessage();
+          }}
+          placeholder="Digite uma mensagem para o Marcos..."
+          className="flex-1 bg-[#2a3942] border border-slate-700 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-500"
+        />
+
+        <button
+          onClick={() => handleSendMessage()}
+          disabled={!inputText.trim()}
+          className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:hover:bg-emerald-500 text-slate-950 flex items-center justify-center transition active:scale-95 shrink-0 shadow-md"
+          title="Enviar mensagem"
+        >
+          <Send className="w-4 h-4 text-slate-950" />
+        </button>
+      </div>
+
     </div>
   );
 }

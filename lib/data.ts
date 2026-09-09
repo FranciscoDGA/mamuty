@@ -16,12 +16,12 @@ export const INITIAL_SALON_CONFIG: SalonConfig = {
 };
 
 export const INITIAL_SERVICES: Service[] = [
-  { id: 'srv-1', name: 'Corte de cabelo degradê', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 40, durationMinutes: 40, pointsReward: 40, popular: true },
-  { id: 'srv-2', name: 'Corte Tradicional / Tesoura', category: 'cabelo', description: 'Corte masculino completo com alinhamento e finalização.', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
-  { id: 'srv-3', name: 'Barba Alinhada & Modelada', category: 'barba', description: 'Desenho, hidratação e toalha para barba perfeita.', price: 25, durationMinutes: 30, pointsReward: 25 },
-  { id: 'srv-4', name: 'Combo Mamuty: Cabelo + Barba', category: 'combos', description: 'Corte completo + Barba alinhada no estilo forte Mamuty.', price: 60, durationMinutes: 70, pointsReward: 60, popular: true },
-  { id: 'srv-5', name: 'Corte Kids Personalizado', category: 'cabelo', description: 'Atendimento especial e personalizado para crianças.', price: 35, durationMinutes: 35, pointsReward: 35 },
-  { id: 'srv-6', name: 'Pezinho & Acabamento Navalhado', category: 'cabelo', description: 'Alinhamento rápido de laterais e nuca na navalha.', price: 15, durationMinutes: 20, pointsReward: 15 }
+  { id: 'srv-1', name: 'Corte social', category: 'cabelo', description: 'Corte masculino tradicional com alinhamento na tesoura ou máquina.', price: 40, durationMinutes: 30, pointsReward: 40, popular: true },
+  { id: 'srv-2', name: 'Corte degradê', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 40, durationMinutes: 40, pointsReward: 40, popular: true },
+  { id: 'srv-3', name: 'Barba simples', category: 'barba', description: 'Alinhamento e desenho de barba com toalha e navalha.', price: 35, durationMinutes: 30, pointsReward: 35 },
+  { id: 'srv-4', name: 'Cabelo + Barba', category: 'combos', description: 'Combo completo de corte degradê ou tradicional + barba alinhada.', price: 70, durationMinutes: 50, pointsReward: 70, popular: true },
+  { id: 'srv-5', name: 'Cabelo + Sobrancelha', category: 'combos', description: 'Corte de cabelo completo com alinhamento e limpeza de sobrancelha.', price: 60, durationMinutes: 45, pointsReward: 60 },
+  { id: 'srv-6', name: 'Combo Completo', category: 'combos', description: 'Corte completo, barba na toalha quente, sobrancelha e finalização.', price: 100, durationMinutes: 60, pointsReward: 100, popular: true }
 ];
 
 export const INITIAL_BARBERS: Barber[] = [

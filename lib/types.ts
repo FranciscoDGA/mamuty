@@ -24,7 +24,7 @@ export interface Barber {
   availableDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 }
 
-export type PaymentMethod = 'pix' | 'cartao' | 'presencial';
+export type PaymentMethod = 'pix' | 'dinheiro' | 'debito' | 'credito' | 'cartao' | 'presencial';
 export type PaymentStatus = 'pendente' | 'pago' | 'no_local';
 export type AppointmentStatus = 'confirmed' | 'em_andamento' | 'completed' | 'cancelled';
 

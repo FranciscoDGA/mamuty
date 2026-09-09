@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
-import { Customer } from '@/lib/types';
+import { Customer, Appointment } from '@/lib/types';
 import { 
   Users, 
   X, 
@@ -15,9 +15,11 @@ import {
   Pencil, 
   Mail, 
   UserCheck, 
-  Award, 
-  Cake, 
-  FileText 
+  History,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Scissors
 } from 'lucide-react';
 
 export default function ClientesPage() {
@@ -25,6 +27,8 @@ export default function ClientesPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState<Customer | null>(null);
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -95,7 +99,6 @@ export default function ClientesPage() {
           if (error) console.warn('Supabase update note:', error);
         }
 
-        // Always update in state with full rich data
         editingCustomer.name = name.trim();
         editingCustomer.phone = phone.trim();
         editingCustomer.email = email.trim();
@@ -126,14 +129,27 @@ export default function ClientesPage() {
     }
   };
 
+  // Appointments for the customer in the History modal
+  const historyCustomerApts = selectedHistoryCustomer
+    ? appointments.filter(a => {
+        const clean = selectedHistoryCustomer.phone.replace(/\D/g, '');
+        return a.customerPhone.replace(/\D/g, '').endsWith(clean.slice(-8));
+      })
+    : [];
+
+  const histCompleted = historyCustomerApts.filter(a => a.status === 'completed');
+  const histCancelled = historyCustomerApts.filter(a => a.status === 'cancelled');
+  const latestAptObj = historyCustomerApts[0];
+  const latestDateFormatted = latestAptObj ? latestAptObj.date.split('-').reverse().join('/') : 'Nenhum';
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header with + Novo Cliente Button */}
+      {/* Header com Botão + Novo Cliente */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-extrabold text-white">Base de Clientes</h1>
+          <h1 className="text-2xl font-extrabold text-white">Base de Clientes & CRM</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Total de {customers.length} cliente{customers.length === 1 ? '' : 's'} cadastrado{customers.length === 1 ? '' : 's'}
+            Total de {customers.length} cliente{customers.length === 1 ? '' : 's'} &bull; Toque em um cliente para ver seu histórico completo
           </p>
         </div>
 
@@ -146,24 +162,25 @@ export default function ClientesPage() {
         </button>
       </div>
 
-      {/* Customers List */}
+      {/* Lista de Clientes */}
       <div className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
         <div className="divide-y divide-slate-800/50">
           {customers.map(customer => {
             const customerCleanPhone = customer.phone.replace(/\D/g, '');
             const customerApts = appointments.filter(
-              a => a.customerPhone.replace(/\D/g, '') === customerCleanPhone
+              a => a.customerPhone.replace(/\D/g, '').endsWith(customerCleanPhone.slice(-8))
             );
             const latestApt = customerApts[0];
 
             return (
               <div 
                 key={customer.id} 
-                className="p-4 sm:p-5 hover:bg-slate-800/20 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="p-4 sm:p-5 hover:bg-slate-800/30 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                onClick={() => setSelectedHistoryCustomer(customer)}
               >
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-white text-base">{customer.name}</h3>
+                    <h3 className="font-bold text-white text-base hover:text-amber-400 transition">{customer.name}</h3>
                     
                     {customer.tier && (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
@@ -178,7 +195,7 @@ export default function ClientesPage() {
                     )}
 
                     <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-bold">
-                      {customerApts.length} atendimento{customerApts.length === 1 ? '' : 's'}
+                      {customerApts.length} agendamento{customerApts.length === 1 ? '' : 's'}
                     </span>
                   </div>
 
@@ -207,6 +224,7 @@ export default function ClientesPage() {
                         href={`https://wa.me/55${customerCleanPhone}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
@@ -229,7 +247,16 @@ export default function ClientesPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setSelectedHistoryCustomer(customer)}
+                    className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1 text-xs font-bold"
+                    title="Ver Histórico Completo do Cliente"
+                  >
+                    <History className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Histórico</span>
+                  </button>
+
                   <button
                     onClick={() => openEditCustomerModal(customer)}
                     className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-amber-400 hover:border-amber-500 transition flex items-center gap-1 text-xs font-semibold"
@@ -266,7 +293,102 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      {/* MODAL: NOVO / EDITAR CLIENTE COMPLETO */}
+      {/* MODAL 1: HISTÓRICO DO CLIENTE (SOLICITADO NA SPRINT 2) */}
+      {selectedHistoryCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-xl w-full shadow-2xl space-y-5 my-8">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-800">
+              <div>
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                  CRM Barbearia Mamuty
+                </span>
+                <h2 className="text-xl font-extrabold text-white mt-1">Histórico do Cliente</h2>
+                <p className="text-sm font-semibold text-slate-300 flex items-center gap-2 mt-0.5">
+                  <span>{selectedHistoryCustomer.name}</span>
+                  <span className="text-xs text-slate-400 font-mono">({selectedHistoryCustomer.phone})</span>
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedHistoryCustomer(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 4 Cards de Métricas Solicitados */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">Agendamentos</p>
+                <p className="text-2xl font-black text-white mt-1">{historyCustomerApts.length}</p>
+              </div>
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center">
+                <p className="text-[10px] text-emerald-400 uppercase font-bold">Concluídos</p>
+                <p className="text-2xl font-black text-emerald-400 mt-1">{histCompleted.length}</p>
+              </div>
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center">
+                <p className="text-[10px] text-rose-400 uppercase font-bold">Cancelados</p>
+                <p className="text-2xl font-black text-rose-400 mt-1">{histCancelled.length}</p>
+              </div>
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-center">
+                <p className="text-[10px] text-amber-400 uppercase font-bold">Última Visita</p>
+                <p className="text-xs font-bold text-white mt-2">{latestDateFormatted}</p>
+              </div>
+            </div>
+
+            {/* Lista Cronológica de Atendimentos */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Atendimentos Registrados</h4>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-800/40">
+                {historyCustomerApts.map(apt => (
+                  <div key={apt.id} className="pt-2 pb-1 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <p className="font-bold text-white flex items-center gap-1.5">
+                        <Scissors className="w-3.5 h-3.5 text-amber-400" />
+                        {apt.serviceNames?.[0] || 'Corte'} &bull; <span className="text-slate-400 font-normal">com {apt.barberName}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {apt.date.split('-').reverse().join('/')} às {apt.time} &bull; <span className="uppercase text-amber-300 font-medium">{apt.paymentMethod}</span> &bull; <span className="text-emerald-400 font-bold">R$ {apt.totalPrice}</span>
+                      </p>
+                    </div>
+
+                    <div>
+                      {apt.status === 'completed' ? (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold uppercase">
+                          Concluído
+                        </span>
+                      ) : apt.status === 'cancelled' ? (
+                        <span className="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded font-bold uppercase">
+                          Cancelado
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-bold uppercase">
+                          Confirmado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {historyCustomerApts.length === 0 && (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum atendimento registrado para este cliente ainda.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setSelectedHistoryCustomer(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: NOVO / EDITAR CLIENTE */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in overflow-y-auto">
           <form 
@@ -312,7 +434,7 @@ export default function ClientesPage() {
                   <input
                     type="tel"
                     required
-                    placeholder="(11) 99999-9999"
+                    placeholder="(94) 98443-9065"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-amber-500 outline-none font-mono"
@@ -351,11 +473,9 @@ export default function ClientesPage() {
                     onChange={(e) => setPreferredBarberId(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-amber-500 outline-none"
                   >
-                    <option value="">Nenhum / Tanto faz</option>
-                    {barbers.filter(b => b.id !== 'any').map(barber => (
-                      <option key={barber.id} value={barber.id}>
-                        {barber.name} ({barber.specialties?.[0] || barber.role})
-                      </option>
+                    <option value="">Sem preferência específica</option>
+                    {barbers.filter(b => b.id !== 'any').map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
                 </div>

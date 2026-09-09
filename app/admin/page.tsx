@@ -31,6 +31,8 @@ export default function AdminPage() {
     createAppointment,
     deleteAppointment,
     addLoyaltyStamp,
+    latestNewBooking,
+    dismissNewBookingAlert,
     refreshData
   } = useApp();
 
@@ -222,6 +224,48 @@ export default function AdminPage() {
         </button>
       </div>
 
+      {/* Banner de Notificação de Novo Agendamento */}
+      {latestNewBooking && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-500/10 border-2 border-amber-500/70 p-4 sm:p-5 rounded-2xl shadow-xl flex items-start justify-between gap-4 animate-in slide-in-from-top-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-md">
+              <Bell className="w-5 h-5 animate-bounce text-slate-950" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-black tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                  🔔 Novo Agendamento Recebido
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Origem: <strong className="text-white">{latestNewBooking.source || 'site'}</strong>
+                </span>
+              </div>
+              <p className="text-base font-extrabold text-white">
+                {latestNewBooking.customerName} &bull; <span className="text-amber-400">{latestNewBooking.serviceNames?.[0]}</span>
+              </p>
+              <p className="text-xs text-slate-300 flex items-center gap-2 flex-wrap">
+                <span>Barbeiro: <strong className="text-white">{latestNewBooking.barberName}</strong></span>
+                <span>&bull;</span>
+                <span>{latestNewBooking.date.split('-').reverse().join('/')} às <strong>{latestNewBooking.time}</strong></span>
+                <span>&bull;</span>
+                <span className="bg-slate-800 text-amber-300 font-bold px-2 py-0.5 rounded-md uppercase border border-slate-700">
+                  {latestNewBooking.paymentMethod}
+                </span>
+                <span>&bull;</span>
+                <span className="text-emerald-400 font-extrabold text-sm">R$ {latestNewBooking.totalPrice}</span>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={dismissNewBookingAlert}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+            title="Fechar notificação"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* KPI Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
@@ -317,13 +361,26 @@ export default function AdminPage() {
                                 {apt.customerName}
                               </p>
                               <span className="text-xs text-slate-400 font-mono">({apt.customerPhone})</span>
+                              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold uppercase">
+                                {apt.paymentMethod || 'PIX'}
+                              </span>
+                              {apt.source && (
+                                <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">
+                                  {apt.source}
+                                </span>
+                              )}
+                              {apt.status === 'confirmed' && (
+                                <span className="text-[10px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-bold uppercase">
+                                  Confirmado
+                                </span>
+                              )}
                               {apt.status === 'completed' && (
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase">
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold uppercase">
                                   Concluído
                                 </span>
                               )}
                               {apt.status === 'cancelled' && (
-                                <span className="text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-bold uppercase">
+                                <span className="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded font-bold uppercase">
                                   Cancelado
                                 </span>
                               )}
@@ -332,7 +389,19 @@ export default function AdminPage() {
                               Barbeiro: <strong className="text-white">{apt.barberName}</strong> &bull; Serviço: <strong className="text-amber-400">{apt.serviceNames?.[0] || 'Corte'}</strong> (R$ {apt.totalPrice})
                             </p>
                           </div>
-                                             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                            {/* Ações Primárias da Sprint: Confirmar, Concluir, Cancelar */}
+                            {apt.status !== 'confirmed' && (
+                              <button
+                                onClick={() => updateAppointmentStatus(apt.id, 'confirmed')}
+                                className="px-3 py-1.5 min-h-[34px] bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                                title="Confirmar Agendamento"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Confirmar</span>
+                              </button>
+                            )}
+
                             {/* Ações de Reagendamento da Cadeira (Ideia 1) */}
                             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
                               <span className="text-[9px] font-bold text-slate-500 uppercase px-1 hidden sm:inline">Cadeira:</span>
@@ -363,6 +432,17 @@ export default function AdminPage() {
                               <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                               <span>+1 Selo</span>
                             </button>
+
+                            {apt.status !== 'cancelled' && (
+                              <button 
+                                onClick={() => handleCancel(apt.id)} 
+                                className="px-2.5 py-1.5 min-h-[34px] bg-slate-900 border border-rose-900/60 text-rose-400 hover:bg-rose-950/40 active:scale-95 rounded-xl text-xs font-bold flex items-center gap-1 transition"
+                                title="Cancelar Agendamento (Liberar Horário)"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Cancelar</span>
+                              </button>
+                            )}
 
                             {apt.status === 'confirmed' && (
                               <>
