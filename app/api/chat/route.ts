@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { INITIAL_SERVICES, INITIAL_BARBERS } from '@/lib/data';
+import { INITIAL_SERVICES, INITIAL_BARBERS, INITIAL_APPOINTMENTS } from '@/lib/data';
+import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
+import { pensarEResponderMarcos } from '@/lib/ai/brain';
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, draft, currentCustomer } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Mensagens não fornecidas' }, { status: 400 });
     }
 
     const lastMessage = messages[messages.length - 1];
-    const userText = (lastMessage.content || '').trim();
-    const lower = userText.toLowerCase();
+    const userText = (lastMessage.content || lastMessage.text || '').trim();
 
-    // 1. Fetch current services and barbers from Supabase (or fallback)
+    // 1. Carregar dados atuais do Supabase
     let services = INITIAL_SERVICES;
     let barbers = INITIAL_BARBERS.filter(b => b.id !== 'any');
+    let appointments = INITIAL_APPOINTMENTS;
 
     try {
       const { data: sData } = await supabase.from('services').select('*').eq('active', true);
@@ -47,126 +49,63 @@ export async function POST(req: NextRequest) {
           availableDays: [1,2,3,4,5,6],
         }));
       }
-    } catch (e) {
-      console.warn('Erro ao carregar dados do Supabase na API:', e);
-    }
 
-    // 2. Check if GEMINI_API_KEY is available for LLM processing
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
-      try {
-        const { GoogleGenAI } = await import('@google/genai');
-        const ai = new GoogleGenAI({ apiKey });
-
-        const systemInstruction = `
-Você é o **Marcos**, o funcionário digital e assistente virtual oficial da **Mamuty Barbearia** em Cumaru do Norte - PA.
-Seu objetivo é atender clientes no WhatsApp de forma rápida, acolhedora, com estilo forte e focada em organizar os agendamentos.
-
-INFORMAÇÕES DA BARBEARIA:
-- Dono: Hemerson Barber
-- Endereço: Cumaru do Norte - PA, CEP 68398-000, Brasil
-- Atendimento: Segunda a Sábado: Somente com hora marcada
-- WhatsApp Suporte: +55 (94) 98443-9065
-- Slogan: ~Mamuty barbearia estilo forte.
-- Serviços e Preços:
-${services.map(s => `  * ${s.name}: R$ ${s.price} (${s.durationMinutes} min) - ${s.description}`).join('\n')}
-- Barbeiros:
-${barbers.map(b => `  * ${b.name}: ${b.specialties.join(', ')}`).join('\n')}
-
-COMPORTAMENTO:
-1. Apresente-se como Marcos, assistente da Mamuty Barbearia.
-2. Responda em português brasileiro com simpatia, estilo barbearia forte e objetividade (estilo WhatsApp).
-3. Se o cliente perguntar preço ou horários, consulte os dados e ofereça opções práticas.
-4. Para agendar, pergunte:
-   - Qual serviço deseja
-   - Preferência de barbeiro (mamuty.barber ou Doglas)
-   - Data e horário
-   - Nome e WhatsApp
-5. Quando o cliente confirmar os dados para agendar, responda com uma confirmação bem formatada e o slogan.
-        `;
-
-        const chatContents = messages.map((m: any) => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.content }]
+      const { data: aData } = await supabase.from('appointments').select('*').order('appointment_date', { ascending: false });
+      if (aData && aData.length > 0) {
+        appointments = aData.map(a => ({
+          id: a.id,
+          customerName: 'Cliente',
+          customerPhone: '',
+          barberId: a.barber_id,
+          barberName: '',
+          serviceIds: [a.service_id],
+          serviceNames: ['Serviço'],
+          date: a.appointment_date,
+          time: a.appointment_time ? a.appointment_time.substring(0, 5) : '10:00',
+          totalPrice: Number(a.price || 0),
+          totalDurationMinutes: a.duration_minutes || 30,
+          paymentMethod: 'pix',
+          paymentStatus: 'pendente',
+          status: a.status || 'confirmed',
+          whatsappNotificationSent: false,
+          createdAt: a.created_at
         }));
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: chatContents,
-          config: {
-            systemInstruction
-          }
-        });
-
-        const reply = response.text || 'Opa! Como posso ajudar você hoje na Mamuty?';
-        return NextResponse.json({ reply, source: 'gemini' });
-      } catch (geminiError) {
-        console.warn('Erro na chamada Gemini, usando assistente inteligente local:', geminiError);
       }
+    } catch (e) {
+      console.warn('Nota de dados Supabase na API:', e);
     }
 
-    // 3. Fallback: Intelligent Conversational Engine (Fast, High-converting NLP)
-    let reply = '';
-    let suggestedOptions: { label: string; text: string }[] = [];
+    // 2. Chamar o Cérebro do Marcos
+    const history = messages.map((m: any) => ({
+      role: (m.role === 'user' || m.sender === 'user') ? ('user' as const) : ('assistant' as const),
+      content: m.content || m.text || ''
+    }));
 
-    // Preços / Serviços
-    if (lower.includes('preço') || lower.includes('preco') || lower.includes('quanto') || lower.includes('valor') || lower.includes('tabela') || lower.includes('serviço') || lower.includes('servico') || lower.includes('corte') || lower.includes('barba')) {
-      const servList = services.map(s => `✂️ *${s.name}* — R$ ${s.price} (${s.durationMinutes} min)`).join('\n');
-      reply = `Opa! Nossos principais serviços e valores na Mamuty Barbearia:\n\n${servList}\n\n☕ Todos incluem café espresso ou água gelada como cortesia!\n\nQuer que eu reserve um horário pra você dar aquele talento no visual?`;
-      suggestedOptions = [
-        { label: 'Agendar um horário', text: 'Quero agendar um horário' },
-        { label: 'Ver profissionais', text: 'Quais os barbeiros disponíveis?' }
-      ];
-    }
-    // Barbeiros / Profissionais
-    else if (lower.includes('barbeiro') || lower.includes('profissional') || lower.includes('profissionais') || lower.includes('equipe') || lower.includes('quem atende')) {
-      const barbList = barbers.map(b => `💈 *${b.name}* — Especialista em ${b.specialties.join(', ')}`).join('\n');
-      reply = `Essa é a nossa equipe de feras na Mamuty:\n\n${barbList}\n\nTodos com excelência e acabamento impecável na navalha e tesoura. Deseja agendar com algum deles em especial?`;
-      suggestedOptions = [
-        { label: 'Com qualquer um', text: 'Pode ser com qualquer barbeiro hoje' },
-        { label: 'Ver preços', text: 'Quais os preços?' }
-      ];
-    }
-    // Endereço / Localização
-    else if (lower.includes('onde') || lower.includes('endereço') || lower.includes('endereco') || lower.includes('local') || lower.includes('fica')) {
-      reply = `📍 Ficamos em *Cumaru do Norte - PA, CEP 68398-000, Brasil*.\n\n⏰ Atendimento: Segunda a Sábado: Somente com hora marcada.\n\nQuer que eu garanta um horário pra você com o mamuty.barber ou Doglas?`;
-      suggestedOptions = [
-        { label: 'Ver horários disponíveis', text: 'Quais os horários disponíveis hoje?' },
-        { label: 'Ver serviços e valores', text: 'Quais os serviços?' }
-      ];
-    }
-    // Horários / Vagas hoje
-    else if (lower.includes('vaga') || lower.includes('horario') || lower.includes('horário') || lower.includes('hoje') || lower.includes('amanha') || lower.includes('amanhã')) {
-      reply = `Temos vagas disponíveis sim! 🎯\n\nNossos horários mais procurados hoje:\n🕒 *14:00* &bull; *15:30* &bull; *17:00* &bull; *18:30*\n\nQual horário fica melhor pra você?`;
-      suggestedOptions = [
-        { label: 'Às 15:30', text: 'Quero às 15:30' },
-        { label: 'Às 17:00', text: 'Quero às 17:00' },
-        { label: 'Às 18:30', text: 'Quero às 18:30' }
-      ];
-    }
-    // Cancelamento
-    else if (lower.includes('cancelar') || lower.includes('desmarcar') || lower.includes('remarcar')) {
-      reply = `Sem problemas, imprevistos acontecem! 👍\n\nPara cancelar ou remarcar, me informe o seu *número de telefone* com DDD que eu localizo seu agendamento no sistema.`;
-      suggestedOptions = [
-        { label: 'Remarcar para amanhã', text: 'Quero remarcar para amanhã' }
-      ];
-    }
-    // Saudação ou Padrão
-    else {
-      reply = `Fala, tudo bem? Bem-vindo ao WhatsApp da *Mamuty Barbearia*! 💈✂️\n\nSou o assistente digital da barbearia. Como posso te ajudar hoje?\n\n• Agendar corte ou barba\n• Consultar serviços e valores\n• Saber horário e endereço`;
-      suggestedOptions = [
-        { label: 'Ver serviços e preços', text: 'Quais os preços dos serviços?' },
-        { label: 'Tem vaga hoje?', text: 'Tem vaga para hoje?' },
-        { label: 'Onde fica a barbearia?', text: 'Qual o endereço de vocês?' }
-      ];
-    }
+    const brainResult = await pensarEResponderMarcos(userText, {
+      services,
+      barbers,
+      appointments,
+      currentCustomer: currentCustomer || null,
+      conversationHistory: history,
+      activeDraft: draft
+    });
 
-    return NextResponse.json({ reply, options: suggestedOptions, source: 'assistant' });
+    return NextResponse.json({
+      reply: brainResult.reply,
+      intent: brainResult.intent,
+      toolUsed: brainResult.toolUsed,
+      quickReplies: brainResult.quickReplies,
+      component: brainResult.component,
+      componentData: brainResult.componentData,
+      newDraftState: brainResult.newDraftState,
+      actionToExecute: brainResult.actionToExecute,
+      source: 'marcos-brain'
+    });
+
   } catch (err: any) {
     console.error('Erro no endpoint /api/chat:', err);
     return NextResponse.json({ 
-      reply: 'Opa! Tive uma oscilação momentânea, mas você pode agendar diretamente pelo menu ou me dizer o dia e horário que deseja!',
+      reply: 'Opa! Tive uma oscilação momentânea na conexão com a agenda. Como posso ajudar você hoje na Mamuty?',
       source: 'fallback'
     }, { status: 200 });
   }
