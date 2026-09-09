@@ -60,27 +60,30 @@ export async function POST(req: NextRequest) {
         const ai = new GoogleGenAI({ apiKey });
 
         const systemInstruction = `
-Você é o assistente virtual exclusivo da **Mamuty Barbearia & Salão Masculino**.
-Seu objetivo é atender clientes no WhatsApp de forma rápida, educada, moderna e focada em converter dúvidas em agendamentos.
+Você é o **Marcos**, o funcionário digital e assistente virtual oficial da **Mamuty Barbearia** em Cumaru do Norte - PA.
+Seu objetivo é atender clientes no WhatsApp de forma rápida, acolhedora, com estilo forte e focada em organizar os agendamentos.
 
 INFORMAÇÕES DA BARBEARIA:
-- Endereço: Av. Paulista, 1842 - Sala 04 - Bela Vista, São Paulo - SP
-- Horário: Segunda a Sábado das 09:00 às 20:30 (almoço das 12:00 às 13:00)
+- Dono: Hemerson Barber
+- Endereço: Cumaru do Norte - PA, CEP 68398-000, Brasil
+- Atendimento: Segunda a Sábado: Somente com hora marcada
+- WhatsApp Suporte: +55 (94) 98443-9065
+- Slogan: ~Mamuty barbearia estilo forte.
 - Serviços e Preços:
 ${services.map(s => `  * ${s.name}: R$ ${s.price} (${s.durationMinutes} min) - ${s.description}`).join('\n')}
 - Barbeiros:
 ${barbers.map(b => `  * ${b.name}: ${b.specialties.join(', ')}`).join('\n')}
 
 COMPORTAMENTO:
-1. Responda em português brasileiro com simpatia, naturalidade e objetividade (estilo WhatsApp).
-2. Se o cliente perguntar preço ou serviços, informe com entusiasmo e sugira agendar um horário.
-3. Quebre objeções: se o cliente achar caro ou tiver dúvida, destaque a qualidade, cerveja/café cortesia e atendimento premium.
+1. Apresente-se como Marcos, assistente da Mamuty Barbearia.
+2. Responda em português brasileiro com simpatia, estilo barbearia forte e objetividade (estilo WhatsApp).
+3. Se o cliente perguntar preço ou horários, consulte os dados e ofereça opções práticas.
 4. Para agendar, pergunte:
    - Qual serviço deseja
-   - Preferência de barbeiro (ou qualquer profissional)
-   - Data e horário desejado
-   - Nome e WhatsApp de contato
-5. Quando o cliente confirmar os dados para agendar, responda com uma confirmação bem formatada.
+   - Preferência de barbeiro (mamuty.barber ou Doglas)
+   - Data e horário
+   - Nome e WhatsApp
+5. Quando o cliente confirmar os dados para agendar, responda com uma confirmação bem formatada e o slogan.
         `;
 
         const chatContents = messages.map((m: any) => ({
@@ -127,10 +130,10 @@ COMPORTAMENTO:
     }
     // Endereço / Localização
     else if (lower.includes('onde') || lower.includes('endereço') || lower.includes('endereco') || lower.includes('local') || lower.includes('fica')) {
-      reply = `📍 Ficamos na *Av. Paulista, 1842 - Sala 04*, Bela Vista - São Paulo (ao lado do metrô Consolação/Trianon-Masp).\n\n⏰ Horário de atendimento: Segunda a Sábado, das 09:00 às 20:30.\n\nQuer garantir uma cadeira pra hoje?`;
+      reply = `📍 Ficamos em *Cumaru do Norte - PA, CEP 68398-000, Brasil*.\n\n⏰ Atendimento: Segunda a Sábado: Somente com hora marcada.\n\nQuer que eu garanta um horário pra você com o mamuty.barber ou Doglas?`;
       suggestedOptions = [
-        { label: 'Ver horários hoje', text: 'Tem vaga hoje?' },
-        { label: 'Quero agendar', text: 'Quero agendar um corte' }
+        { label: 'Ver horários disponíveis', text: 'Quais os horários disponíveis hoje?' },
+        { label: 'Ver serviços e valores', text: 'Quais os serviços?' }
       ];
     }
     // Horários / Vagas hoje

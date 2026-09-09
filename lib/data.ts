@@ -16,49 +16,37 @@ export const INITIAL_SALON_CONFIG: SalonConfig = {
 };
 
 export const INITIAL_SERVICES: Service[] = [
-  { id: 'srv-1', name: 'Corte Tradicional / Tesoura', category: 'cabelo', description: 'Corte masculino completo com alinhamento e finalização.', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
-  { id: 'srv-2', name: 'Degradê / Fade Especial', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
-  { id: 'srv-3', name: 'Corte Kids Personalizado', category: 'cabelo', description: 'Atendimento especial e personalizado para crianças.', price: 35, durationMinutes: 35, pointsReward: 35, popular: true },
-  { id: 'srv-4', name: 'Barba Alinhada & Modelada', category: 'barba', description: 'Desenho, hidratação e toalha para barba perfeita.', price: 25, durationMinutes: 30, pointsReward: 25 },
-  { id: 'srv-5', name: 'Combo Mamuty: Cabelo + Barba', category: 'combos', description: 'Corte completo + Barba alinhada no estilo forte Mamuty.', price: 55, durationMinutes: 70, pointsReward: 55, popular: true },
+  { id: 'srv-1', name: 'Corte de cabelo degradê', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 40, durationMinutes: 40, pointsReward: 40, popular: true },
+  { id: 'srv-2', name: 'Corte Tradicional / Tesoura', category: 'cabelo', description: 'Corte masculino completo com alinhamento e finalização.', price: 35, durationMinutes: 40, pointsReward: 35, popular: true },
+  { id: 'srv-3', name: 'Barba Alinhada & Modelada', category: 'barba', description: 'Desenho, hidratação e toalha para barba perfeita.', price: 25, durationMinutes: 30, pointsReward: 25 },
+  { id: 'srv-4', name: 'Combo Mamuty: Cabelo + Barba', category: 'combos', description: 'Corte completo + Barba alinhada no estilo forte Mamuty.', price: 60, durationMinutes: 70, pointsReward: 60, popular: true },
+  { id: 'srv-5', name: 'Corte Kids Personalizado', category: 'cabelo', description: 'Atendimento especial e personalizado para crianças.', price: 35, durationMinutes: 35, pointsReward: 35 },
   { id: 'srv-6', name: 'Pezinho & Acabamento Navalhado', category: 'cabelo', description: 'Alinhamento rápido de laterais e nuca na navalha.', price: 15, durationMinutes: 20, pointsReward: 15 }
 ];
 
 export const INITIAL_BARBERS: Barber[] = [
   { 
     id: 'barber-1', 
-    name: 'Hemerson Barber', 
-    role: 'Fundador & Barbeiro Chefe', 
+    name: 'mamuty.barber', 
+    role: 'Fundador & Barbeiro Chefe (Hemerson)', 
     avatarUrl: '/logo.png', 
     rating: 5.0, 
     reviewsCount: 148, 
-    specialties: ['Cortes Masculinos', 'Degradê', 'Atendimento Kids Personalizado', 'Barba'], 
+    specialties: ['Corte de cabelo degradê', 'Tesoura', 'Barba', 'Kids'], 
     phone: '(94) 98443-9065', 
     bio: 'Fundador da Mamuty Barbearia. Estilo forte, pontualidade britânica e atendimento dedicado a adultos e kids.', 
     availableDays: [1,2,3,4,5,6] 
   },
   { 
     id: 'barber-2', 
-    name: 'Carlos Barbeiro', 
+    name: 'Doglas', 
     role: 'Especialista em Degradê & Barba', 
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', 
     rating: 4.9, 
-    reviewsCount: 88, 
-    specialties: ['Fade Navalhado', 'Barboterapia', 'Pezinho'], 
+    reviewsCount: 112, 
+    specialties: ['Corte de cabelo degradê', 'Fade Navalhado', 'Barboterapia', 'Pezinho'], 
     phone: '(94) 98443-9065', 
     bio: 'Precisão milimétrica e acabamento na régua.', 
-    availableDays: [1,2,3,4,5,6] 
-  },
-  { 
-    id: 'barber-3', 
-    name: 'Marcos Barbeiro', 
-    role: 'Especialista em Corte Clássico & Kids', 
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80', 
-    rating: 4.9, 
-    reviewsCount: 92, 
-    specialties: ['Corte Tradicional', 'Atendimento Infantil', 'Sobrancelha'], 
-    phone: '(94) 98443-9065', 
-    bio: 'Paciência no atendimento kids e visual clássico de respeito.', 
     availableDays: [1,2,3,4,5,6] 
   },
 ];
@@ -233,9 +221,78 @@ export const INITIAL_CUSTOMERS: Customer[] = [
 ];
 
 export const INITIAL_APPOINTMENTS: Appointment[] = [
-  { id: 'apt-1', customerName: 'João Silva', customerPhone: '11999999999', serviceIds: ['srv-1'], serviceNames: ['Corte'], totalPrice: 35, totalDurationMinutes: 40, barberId: 'barber-1', barberName: 'João', date: new Date().toISOString().split('T')[0], time: '14:00', status: 'confirmed', paymentMethod: 'presencial', paymentStatus: 'no_local', whatsappNotificationSent: false, createdAt: new Date().toISOString() },
-  { id: 'apt-2', customerName: 'Carlos Silva', customerPhone: '11999999999', serviceIds: ['srv-2'], serviceNames: ['Barba'], totalPrice: 25, totalDurationMinutes: 30, barberId: 'barber-2', barberName: 'Carlos', date: new Date().toISOString().split('T')[0], time: '15:30', status: 'confirmed', paymentMethod: 'presencial', paymentStatus: 'no_local', whatsappNotificationSent: false, createdAt: new Date().toISOString() },
-  { id: 'apt-3', customerName: 'Pedro Silva', customerPhone: '11999999999', serviceIds: ['srv-3'], serviceNames: ['Corte + Barba'], totalPrice: 55, totalDurationMinutes: 70, barberId: 'barber-3', barberName: 'Pedro', date: new Date().toISOString().split('T')[0], time: '16:00', status: 'confirmed', paymentMethod: 'presencial', paymentStatus: 'no_local', whatsappNotificationSent: false, createdAt: new Date().toISOString() }
+  {
+    id: 'apt-1',
+    customerName: 'Cliente X',
+    customerPhone: '94991112233',
+    serviceIds: ['srv-2'],
+    serviceNames: ['Corte Tradicional / Tesoura'],
+    totalPrice: 35,
+    totalDurationMinutes: 40,
+    barberId: 'barber-1',
+    barberName: 'mamuty.barber',
+    date: new Date().toISOString().split('T')[0],
+    time: '09:00',
+    status: 'confirmed',
+    paymentMethod: 'presencial',
+    paymentStatus: 'no_local',
+    whatsappNotificationSent: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-2',
+    customerName: 'Cliente Y',
+    customerPhone: '94992223344',
+    serviceIds: ['srv-3'],
+    serviceNames: ['Barba Alinhada & Modelada'],
+    totalPrice: 25,
+    totalDurationMinutes: 30,
+    barberId: 'barber-2',
+    barberName: 'Doglas',
+    date: new Date().toISOString().split('T')[0],
+    time: '10:00',
+    status: 'confirmed',
+    paymentMethod: 'presencial',
+    paymentStatus: 'no_local',
+    whatsappNotificationSent: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-3',
+    customerName: 'Cliente Z',
+    customerPhone: '94993334455',
+    serviceIds: ['srv-1'],
+    serviceNames: ['Corte de cabelo degradê'],
+    totalPrice: 40,
+    totalDurationMinutes: 40,
+    barberId: 'barber-1',
+    barberName: 'mamuty.barber',
+    date: new Date().toISOString().split('T')[0],
+    time: '14:00',
+    status: 'confirmed',
+    paymentMethod: 'presencial',
+    paymentStatus: 'no_local',
+    whatsappNotificationSent: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'apt-4',
+    customerName: 'Marcos Souza',
+    customerPhone: '94994445566',
+    serviceIds: ['srv-1'],
+    serviceNames: ['Corte de cabelo degradê'],
+    totalPrice: 40,
+    totalDurationMinutes: 40,
+    barberId: 'barber-2',
+    barberName: 'Doglas',
+    date: new Date().toISOString().split('T')[0],
+    time: '16:00',
+    status: 'confirmed',
+    paymentMethod: 'presencial',
+    paymentStatus: 'no_local',
+    whatsappNotificationSent: false,
+    createdAt: new Date().toISOString()
+  }
 ];
 
 export const INITIAL_TRANSACTIONS: FinancialTransaction[] = [

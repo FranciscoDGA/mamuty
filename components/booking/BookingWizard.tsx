@@ -96,7 +96,7 @@ export const BookingWizard: React.FC = () => {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       const iso = d.toISOString().split('T')[0];
-      const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+      const dayName = i === 0 ? 'Hoje' : i === 1 ? 'Amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'short' });
       const dayNum = d.getDate();
       const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
       const isSunday = d.getDay() === 0;
@@ -294,8 +294,11 @@ export const BookingWizard: React.FC = () => {
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide">Mamuty Barbearia</h1>
-          <p className="text-xs sm:text-sm text-amber-400 font-bold mt-0.5">
-            ~Mamuty barbearia estilo forte.
+          <p className="text-sm sm:text-base text-amber-400 font-extrabold mt-1">
+            Agende seu horário sem precisar esperar na barbearia.
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            ~Mamuty barbearia estilo forte. &bull; Cumaru do Norte - PA
           </p>
         </div>
 
@@ -456,16 +459,16 @@ export const BookingWizard: React.FC = () => {
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <User className="w-5 h-5 text-amber-500" />
-            Escolha o profissional
+            Quem você prefere?
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {barbers.map((barber) => (
                <button
                 key={barber.id}
                 onClick={() => setSelectedBarber(barber)}
-                className={`flex items-center gap-4 text-left p-3 rounded-2xl border transition ${
+                className={`flex items-center gap-4 text-left p-3.5 rounded-2xl border transition ${
                   selectedBarber?.id === barber.id
-                    ? 'bg-amber-500/10 border-amber-500 shadow-md'
+                    ? 'bg-amber-500/15 border-amber-500 shadow-md'
                     : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                 }`}
               >
@@ -495,7 +498,7 @@ export const BookingWizard: React.FC = () => {
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-amber-500" />
-            Para qual dia?
+            Qual dia?
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {availableDates.map((date) => (
@@ -505,10 +508,10 @@ export const BookingWizard: React.FC = () => {
                 onClick={() => setSelectedDate(date.iso)}
                 className={`p-4 flex flex-col items-center justify-center rounded-2xl border transition ${
                   date.isSunday ? 'opacity-40 bg-slate-900/30 border-slate-800/50 cursor-not-allowed' :
-                  selectedDate === date.iso ? 'bg-amber-500/10 border-amber-500 text-amber-400' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-600'
+                  selectedDate === date.iso ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-600'
                 }`}
               >
-                <span className="text-[11px] font-semibold uppercase tracking-wider mb-1">{date.dayName}</span>
+                <span className="text-xs font-bold uppercase tracking-wider mb-1">{date.dayName}</span>
                 <span className="text-2xl font-extrabold">{date.dayNum}</span>
                 <span className="text-[10px] text-slate-400">{date.monthName}</span>
                 {date.isSunday && <span className="text-[9px] text-rose-400 mt-1 font-bold">Fechado</span>}
@@ -530,9 +533,9 @@ export const BookingWizard: React.FC = () => {
         <div className="space-y-4 animate-in fade-in">
            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-500" />
-            Qual o melhor horário?
+            Qual horário?
           </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {timeSlots.map(slot => {
               const isOccupied = occupiedSlots.has(slot);
               return (
@@ -540,13 +543,24 @@ export const BookingWizard: React.FC = () => {
                   key={slot}
                   disabled={isOccupied}
                   onClick={() => setSelectedTime(slot)}
-                  className={`py-3 rounded-xl border text-sm font-bold transition flex items-center justify-center gap-1.5 ${
-                    isOccupied ? 'opacity-30 bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed' :
-                    selectedTime === slot ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-md' :
-                    'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-600'
+                  className={`p-3 rounded-2xl border text-xs font-bold transition flex items-center justify-between gap-2 ${
+                    isOccupied
+                      ? 'opacity-40 bg-slate-950/80 border-slate-800 text-slate-500 cursor-not-allowed line-through'
+                      : selectedTime === slot
+                      ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-md font-black scale-102'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-200 hover:border-slate-600 active:scale-95'
                   }`}
                 >
-                  {slot}
+                  <span className="text-sm font-extrabold">{slot}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                    isOccupied 
+                      ? 'bg-rose-950/50 text-rose-400 border border-rose-900/60' 
+                      : selectedTime === slot
+                      ? 'bg-black/20 text-slate-950 font-black'
+                      : 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/40'
+                  }`}>
+                    {isOccupied ? '❌ Ocupado' : 'Disponível'}
+                  </span>
                 </button>
               );
             })}

@@ -86,7 +86,7 @@ export default function WhatsAppDemo() {
       {
         id: 'welcome-1',
         sender: 'bot',
-        text: `Fala, tudo bem? Bem-vindo ao WhatsApp da *Mamuty Barbearia*! 💈✂️\n\nSou o assistente digital inteligente da barbearia. Você pode me mandar mensagem de texto ou *gravar um áudio*, que eu compreendo sua voz perfeitamente! Como posso te ajudar hoje?\n\n• Agendar um horário\n• Preços e serviços\n• Barbeiros disponíveis\n• Endereço e horários`,
+        text: `Fala, tudo bem? Bem-vindo à *Mamuty Barbearia*! 💈✂️\n\nEu sou o *Marcos*, o funcionário digital e assistente da Mamuty Barbearia. Você pode me mandar mensagem de texto ou *gravar um áudio*, que eu compreendo sua voz perfeitamente! Como posso te ajudar hoje?\n\n• Agendar um horário\n• Preços e serviços\n• Barbeiros disponíveis (mamuty.barber e Doglas)\n• Endereço e funcionamento`,
         time: welcomeTime,
         options: [
           { label: '💈 Ver serviços e preços', action: () => handleSendText('Quais os preços dos serviços?') },
@@ -359,10 +359,10 @@ export default function WhatsAppDemo() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-bold text-sm leading-tight">Mamuty Barbearia</h1>
+                <h1 className="font-bold text-sm leading-tight">Marcos</h1>
                 <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               </div>
-              <p className="text-[10px] text-white/80">Online &bull; Atendente de IA</p>
+              <p className="text-[10px] text-white/90">Assistente da Mamuty Barbearia &bull; Online</p>
             </div>
           </div>
 
