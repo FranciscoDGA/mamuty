@@ -22,6 +22,7 @@ export interface Barber {
   phone: string;
   bio: string;
   availableDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  active?: boolean;
 }
 
 export type PaymentMethod = 'pix' | 'dinheiro' | 'debito' | 'credito' | 'cartao' | 'presencial';

@@ -110,7 +110,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       
       // 2. Fetch Barbers from Supabase
-      const { data: bData, error: bErr } = await supabase.from('barbers').select('*').eq('active', true);
+      const { data: bData, error: bErr } = await supabase.from('barbers').select('*');
       if (bErr || !bData || bData.length === 0) {
         console.warn('Supabase barbers unavailable or empty, using fallback:', bErr);
         setBarbers(INITIAL_BARBERS);
@@ -127,6 +127,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             phone: '(94) 98443-9065',
             bio: b.description || '',
             availableDays: [1,2,3,4,5,6],
+            active: b.active !== false,
           })),
           {
             id: 'any',
@@ -548,10 +549,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setBarbers(prev => prev.filter(b => b.id !== id));
     try {
       if (isUUID(id)) {
-        await supabase.from('barbers').update({ active: false }).eq('id', id);
+        await supabase.from('barbers').delete().eq('id', id);
       }
     } catch (err) {
-      console.warn('Erro ao desativar barbeiro no Supabase:', err);
+      console.warn('Erro ao deletar barbeiro no Supabase:', err);
     }
   };
 

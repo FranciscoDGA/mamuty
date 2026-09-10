@@ -4,42 +4,25 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
 import { Service } from '@/lib/types';
-import { Loader2, Plus, X, Trash2, Scissors, Package, Check, Pencil } from 'lucide-react';
+import { Plus, X, Trash2, Scissors, Package, Pencil, Check, Eye, EyeOff } from 'lucide-react';
 
 export default function ServicosPage() {
   const { services, deleteService, refreshData } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Service | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [editingField, setEditingField] = useState<{ id: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'servico' | 'produto'>('all');
 
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'servico', // 'servico' or 'produto'
-    category: 'cabelo',
-    description: '',
-    price: '',
-    duration_minutes: '30',
-    pointsReward: '20',
-    popular: false,
-    stock: 'Em estoque'
+    name: '', type: 'servico', category: 'cabelo', description: '',
+    price: '', duration_minutes: '30', pointsReward: '20', popular: false, stock: 'Em estoque'
   });
 
   const openNewModal = () => {
     setEditingItem(null);
-    setFormData({
-      name: '',
-      type: 'servico',
-      category: 'cabelo',
-      description: '',
-      price: '',
-      duration_minutes: '30',
-      pointsReward: '20',
-      popular: false,
-      stock: 'Em estoque'
-    });
-    setError('');
+    setFormData({ name: '', type: 'servico', category: 'cabelo', description: '', price: '', duration_minutes: '30', pointsReward: '20', popular: false, stock: 'Em estoque' });
     setIsModalOpen(true);
   };
 
@@ -47,43 +30,24 @@ export default function ServicosPage() {
     setEditingItem(item);
     const isProduct = item.description?.includes('[PRODUTO]') || item.category === 'produtos';
     let cleanDesc = item.description?.replace('[PRODUTO]', '').trim() || '';
-    
-    // Extract tags
     const popularMatch = cleanDesc.includes('[POPULAR]');
     cleanDesc = cleanDesc.replace('[POPULAR]', '').trim();
-
     const ptsMatch = cleanDesc.match(/\[PTS:(\d+)\]/);
     const points = ptsMatch ? ptsMatch[1] : (item.pointsReward?.toString() || '20');
     cleanDesc = cleanDesc.replace(/\[PTS:\d+\]/, '').trim();
-
     const stockMatch = cleanDesc.match(/\[ESTOQUE:([^\]]+)\]/);
     const stock = stockMatch ? stockMatch[1] : 'Em estoque';
     cleanDesc = cleanDesc.replace(/\[ESTOQUE:[^\]]+\]/, '').trim();
-
     const catMatch = cleanDesc.match(/\[CAT:([^\]]+)\]/);
     const cat = catMatch ? catMatch[1] : (item.category || (isProduct ? 'produtos' : 'cabelo'));
     cleanDesc = cleanDesc.replace(/\[CAT:[^\]]+\]/, '').trim();
-
-    setFormData({
-      name: item.name,
-      type: isProduct ? 'produto' : 'servico',
-      category: cat,
-      description: cleanDesc,
-      price: item.price.toString(),
-      duration_minutes: item.durationMinutes?.toString() || '0',
-      pointsReward: points,
-      popular: popularMatch || !!item.popular,
-      stock: stock
-    });
-    setError('');
+    setFormData({ name: item.name, type: isProduct ? 'produto' : 'servico', category: cat, description: cleanDesc, price: item.price.toString(), duration_minutes: item.durationMinutes?.toString() || '0', pointsReward: points, popular: popularMatch || !!item.popular, stock });
     setIsModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
-
     try {
       const isProduct = formData.type === 'produto';
       const parts: string[] = [];
@@ -93,7 +57,6 @@ export default function ServicosPage() {
       if (formData.pointsReward) parts.push(`[PTS:${formData.pointsReward}]`);
       if (isProduct && formData.stock) parts.push(`[ESTOQUE:${formData.stock}]`);
       if (formData.description) parts.push(formData.description.trim());
-
       const fullDescription = parts.join(' ').trim();
       const numPrice = parseFloat(formData.price || '0');
       const numDuration = isProduct ? 0 : parseInt(formData.duration_minutes || '30');
@@ -101,70 +64,50 @@ export default function ServicosPage() {
 
       if (editingItem) {
         if (isUUID) {
-          try {
-            await supabase.from('services').update({
-              name: formData.name.trim(),
-              description: fullDescription,
-              price: numPrice,
-              duration_minutes: numDuration,
-            }).eq('id', editingItem.id);
-          } catch (dbErr) {
-            console.warn('Supabase sync note:', dbErr);
-          }
+          try { await supabase.from('services').update({ name: formData.name.trim(), description: fullDescription, price: numPrice, duration_minutes: numDuration }).eq('id', editingItem.id); } catch (e) { console.warn(e); }
         }
-        editingItem.name = formData.name.trim();
-        editingItem.description = fullDescription;
-        editingItem.price = numPrice;
-        editingItem.durationMinutes = numDuration;
-        editingItem.popular = formData.popular;
-        editingItem.pointsReward = parseInt(formData.pointsReward || '0');
+        editingItem.name = formData.name.trim(); editingItem.description = fullDescription;
+        editingItem.price = numPrice; editingItem.durationMinutes = numDuration;
+        editingItem.popular = formData.popular; editingItem.pointsReward = parseInt(formData.pointsReward || '0');
         editingItem.category = formData.category as any;
-        alert(isProduct ? 'Produto atualizado com sucesso!' : 'Serviço atualizado com sucesso!');
       } else {
-        try {
-          await supabase.from('services').insert({
-            name: formData.name.trim(),
-            description: fullDescription,
-            price: numPrice,
-            duration_minutes: numDuration,
-            active: true
-          });
-        } catch (dbErr) {
-          console.warn('Supabase insert note:', dbErr);
-        }
-        alert(isProduct ? 'Produto cadastrado com sucesso!' : 'Serviço cadastrado com sucesso!');
+        try { await supabase.from('services').insert({ name: formData.name.trim(), description: fullDescription, price: numPrice, duration_minutes: numDuration, active: true }); } catch (e) { console.warn(e); }
       }
-
       await refreshData();
       setIsModalOpen(false);
       setEditingItem(null);
-    } catch (err: any) {
-      console.warn('Save notice:', err);
-      setIsModalOpen(false);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err: any) { console.warn(err); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja excluir permanentemente "${name}"?`)) return;
-
-    try {
-      await deleteService(id);
-      alert(`"${name}" foi excluído com sucesso.`);
-    } catch (err: any) {
-      alert('Erro ao excluir: ' + (err.message || err));
-    }
+    if (!confirm(`Excluir "${name}"?`)) return;
+    try { await deleteService(id); } catch (err: any) { alert('Erro: ' + (err.message || err)); }
   };
 
-  const toggleStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase.from('services').update({ active: !currentStatus }).eq('id', id);
-      if (error) throw error;
-      await refreshData();
-    } catch (err) {
-      alert('Erro ao atualizar status.');
+  const toggleStatus = async (item: Service) => {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+    if (isUUID) {
+      try { await supabase.from('services').update({ active: !item.popular }).eq('id', item.id); } catch (e) { console.warn(e); }
     }
+    await refreshData();
+  };
+
+  const startInlineEdit = (id: string, field: string, currentValue: string) => {
+    setEditingField({ id, field });
+    setEditValue(currentValue);
+  };
+
+  const saveInlineEdit = async (item: Service) => {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+    const field = editingField!.field;
+    const val = field === 'price' ? parseFloat(editValue || '0') : parseInt(editValue || '0');
+    if (isUUID) {
+      try { await supabase.from('services').update({ [field]: val }).eq('id', item.id); } catch (e) { console.warn(e); }
+    }
+    item[field === 'price' ? 'price' : 'durationMinutes'] = val;
+    await refreshData();
+    setEditingField(null);
   };
 
   const filteredItems = services.filter(item => {
@@ -176,319 +119,148 @@ export default function ServicosPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white">Serviços & Produtos</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Cadastre, edite ou exclua serviços da barbearia e produtos para venda
-          </p>
+          <p className="text-xs text-slate-400 mt-1">{services.length} item{services.length === 1 ? '' : 's'} cadastrado{services.length === 1 ? '' : 's'}</p>
         </div>
-
-        <button 
-          onClick={openNewModal} 
-          className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Novo Serviço ou Produto
+        <button onClick={openNewModal} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm transition flex items-center gap-1.5 shadow-lg shadow-amber-500/20">
+          <Plus className="w-4 h-4" /> Novo Serviço/Produto
         </button>
       </div>
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 text-xs font-semibold bg-slate-900 p-1 rounded-xl border border-slate-800 w-fit">
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`px-3 py-1.5 rounded-lg transition ${
-            activeFilter === 'all' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Todos ({services.length})
-        </button>
-        <button
-          onClick={() => setActiveFilter('servico')}
-          className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${
-            activeFilter === 'servico' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Scissors className="w-3.5 h-3.5" />
-          <span>Serviços</span>
-        </button>
-        <button
-          onClick={() => setActiveFilter('produto')}
-          className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${
-            activeFilter === 'produto' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Package className="w-3.5 h-3.5" />
-          <span>Produtos de Venda</span>
-        </button>
+        {[
+          { key: 'all' as const, label: `Todos (${services.length})` },
+          { key: 'servico' as const, label: 'Serviços', icon: Scissors },
+          { key: 'produto' as const, label: 'Produtos', icon: Package },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveFilter(tab.key)}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${activeFilter === tab.key ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>
+            {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
-      
-      {/* Grid of Services & Products */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredItems.map(item => {
-          const isProduct = item.description?.includes('[PRODUTO]');
-          const cleanDescription = item.description?.replace('[PRODUTO]', '').trim();
 
-          return (
-            <div 
-              key={item.id} 
-              className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between gap-4 hover:border-slate-700 transition"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mb-1.5 ${
-                      isProduct ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    }`}>
+      {/* Services List */}
+      <div className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
+        <div className="divide-y divide-slate-800/50">
+          {filteredItems.map(item => {
+            const isProduct = item.description?.includes('[PRODUTO]');
+            const cleanDesc = item.description?.replace('[PRODUTO]', '').replace(/\[[^\]]+\]/g, '').trim();
+            return (
+              <div key={item.id} className="p-4 sm:p-5 hover:bg-slate-800/20 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0 ${isProduct ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
                       {isProduct ? 'Produto' : 'Serviço'}
                     </span>
-                    <h3 className="font-bold text-white text-lg">{item.name}</h3>
+                    <h3 className="font-bold text-white text-sm truncate">{item.name}</h3>
+                    {item.popular && <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold shrink-0">Destaque</span>}
                   </div>
-
-                  <span className="bg-slate-950 px-3 py-1 rounded-xl text-emerald-400 font-extrabold text-sm border border-slate-800">
-                    R$ {item.price}
-                  </span>
+                  {cleanDesc && <p className="text-[11px] text-slate-500 mt-1 truncate">{cleanDesc}</p>}
                 </div>
 
-                {cleanDescription && (
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">{cleanDescription}</p>
-                )}
-
-                <div className="flex items-center gap-3 mt-3 text-xs">
-                  {!isProduct && (
-                    <span className="bg-slate-950 px-2.5 py-1 rounded-lg text-slate-400 border border-slate-800 font-mono">
-                      ⏱ {item.durationMinutes} min
-                    </span>
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  {/* Inline Price Edit */}
+                  {editingField?.id === item.id && editingField.field === 'price' ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-500">R$</span>
+                      <input type="number" step="0.01" value={editValue} onChange={e => setEditValue(e.target.value)}
+                        className="w-16 bg-slate-950 border border-amber-500 rounded-lg px-2 py-1 text-xs text-white outline-none" autoFocus
+                        onBlur={() => saveInlineEdit(item)} onKeyDown={e => e.key === 'Enter' && saveInlineEdit(item)} />
+                    </div>
+                  ) : (
+                    <button onClick={() => startInlineEdit(item.id, 'price', item.price.toString())}
+                      className="bg-slate-950 px-2.5 py-1 rounded-lg text-emerald-400 font-bold text-xs border border-slate-800 hover:border-amber-500 transition cursor-pointer" title="Clique para editar preço">
+                      R$ {item.price}
+                    </button>
                   )}
+
+                  {/* Inline Duration Edit */}
+                  {!isProduct && (editingField?.id === item.id && editingField.field === 'duration_minutes' ? (
+                    <div className="flex items-center gap-1">
+                      <input type="number" step="5" value={editValue} onChange={e => setEditValue(e.target.value)}
+                        className="w-12 bg-slate-950 border border-amber-500 rounded-lg px-2 py-1 text-xs text-white outline-none" autoFocus
+                        onBlur={() => saveInlineEdit(item)} onKeyDown={e => e.key === 'Enter' && saveInlineEdit(item)} />
+                      <span className="text-[10px] text-slate-500">min</span>
+                    </div>
+                  ) : (
+                    <button onClick={() => startInlineEdit(item.id, 'duration_minutes', item.durationMinutes?.toString() || '0')}
+                      className="bg-slate-950 px-2.5 py-1 rounded-lg text-slate-400 text-xs border border-slate-800 hover:border-amber-500 transition cursor-pointer font-mono" title="Clique para editar duração">
+                      ⏱ {item.durationMinutes} min
+                    </button>
+                  ))}
+
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditModal(item)} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 transition" title="Editar">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id, item.name)} className="p-1.5 rounded-lg bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 transition" title="Excluir">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800/80">
-                <button 
-                  onClick={() => toggleStatus(item.id, true)}
-                  title="Status do item"
-                  className="bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 px-3 py-1 text-[10px] uppercase font-bold rounded-lg transition"
-                >
-                  Ativo
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => openEditModal(item)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 transition flex items-center gap-1 text-xs font-semibold"
-                    title="Editar item"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>Editar</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(item.id, item.name)}
-                    className="p-1.5 rounded-lg bg-slate-950 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500 transition flex items-center gap-1 text-xs"
-                    title="Excluir item permanentemente"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+            );
+          })}
+          {filteredItems.length === 0 && (
+            <div className="p-12 text-center text-slate-500 space-y-2">
+              <Package className="w-10 h-10 mx-auto text-slate-700" />
+              <p className="text-sm">Nenhum item encontrado.</p>
             </div>
-          );
-        })}
-
-        {filteredItems.length === 0 && (
-          <div className="col-span-2 p-12 text-center text-slate-500 space-y-2 bg-slate-900/30 rounded-2xl border border-slate-800">
-            <Package className="w-10 h-10 mx-auto text-slate-700" />
-            <p className="text-sm">Nenhum item encontrado nesta categoria.</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Modal: Novo / Editar Serviço ou Produto */}
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
-          <form onSubmit={handleSave} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4 relative">
+          <form onSubmit={handleSave} className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                {editingItem ? (
-                  <Pencil className="w-5 h-5 text-amber-400" />
-                ) : (
-                  <Plus className="w-5 h-5 text-amber-400" />
-                )}
-                <h3 className="font-bold text-lg text-white">
-                  {editingItem ? `Editar: ${editingItem.name}` : 'Cadastrar Serviço ou Produto'}
-                </h3>
+                {editingItem ? <Pencil className="w-5 h-5 text-amber-400" /> : <Plus className="w-5 h-5 text-amber-400" />}
+                <h3 className="font-bold text-lg text-white">{editingItem ? `Editar: ${editingItem.name}` : 'Novo Serviço ou Produto'}</h3>
               </div>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition">
-                <X className="w-5 h-5" />
-              </button>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
-            {error && <p className="text-sm text-rose-400 bg-rose-500/10 p-2 rounded">{error}</p>}
-
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1 block">Tipo de Cadastro</label>
+                <label className="text-xs font-bold text-slate-400 mb-1 block">Tipo</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, type: 'servico' })}
-                    className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-                      formData.type === 'servico' 
-                        ? 'bg-amber-500 text-slate-950 border-amber-400' 
-                        : 'bg-slate-950 text-slate-400 border-slate-800'
-                    }`}
-                  >
-                    <Scissors className="w-3.5 h-3.5" />
-                    <span>Serviço</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, type: 'produto' })}
-                    className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-                      formData.type === 'produto' 
-                        ? 'bg-indigo-500 text-white border-indigo-400' 
-                        : 'bg-slate-950 text-slate-400 border-slate-800'
-                    }`}
-                  >
-                    <Package className="w-3.5 h-3.5" />
-                    <span>Produto de Venda</span>
-                  </button>
+                  <button type="button" onClick={() => setFormData({ ...formData, type: 'servico' })} className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${formData.type === 'servico' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-950 text-slate-400 border-slate-800'}`}><Scissors className="w-3.5 h-3.5" /> Serviço</button>
+                  <button type="button" onClick={() => setFormData({ ...formData, type: 'produto' })} className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${formData.type === 'produto' ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-slate-950 text-slate-400 border-slate-800'}`}><Package className="w-3.5 h-3.5" /> Produto</button>
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 mb-1 block">
-                  {formData.type === 'produto' ? 'Nome do Produto' : 'Nome do Serviço'}
-                </label>
-                <input 
-                  required 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                  placeholder={formData.type === 'produto' ? 'Ex: Pomada Modeladora Efeito Matte' : 'Ex: Corte Masculino Degradê'} 
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 mb-1 block">Descrição / Detalhes</label>
-                <textarea 
-                  rows={2} 
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                  placeholder={formData.type === 'produto' ? 'Ex: Fixação forte e sem brilho, pote de 100g' : 'Ex: Acabamento detalhado com tesoura e navalha'} 
-                />
-              </div>
-
+              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Nome *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
+              <div><label className="text-xs font-bold text-slate-400 mb-1 block">Descrição</label><textarea rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 mb-1 block">Preço (R$)</label>
-                  <input 
-                    required 
-                    type="number" 
-                    step="0.01" 
-                    value={formData.price} 
-                    onChange={e => setFormData({...formData, price: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                    placeholder="35.00" 
-                  />
-                </div>
-
+                <div><label className="text-xs font-bold text-slate-400 mb-1 block">Preço (R$) *</label><input required type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
                 {formData.type === 'servico' ? (
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 mb-1 block">Duração (Minutos)</label>
-                    <input 
-                      required 
-                      type="number" 
-                      step="5" 
-                      value={formData.duration_minutes} 
-                      onChange={e => setFormData({...formData, duration_minutes: e.target.value})} 
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                      placeholder="40" 
-                    />
-                  </div>
+                  <div><label className="text-xs font-bold text-slate-400 mb-1 block">Duração (min) *</label><input required type="number" step="5" value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
                 ) : (
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 mb-1 block">Status do Estoque</label>
-                    <input 
-                      value={formData.stock} 
-                      onChange={e => setFormData({...formData, stock: e.target.value})} 
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                      placeholder="Ex: Em estoque (15 unid.)" 
-                    />
-                  </div>
+                  <div><label className="text-xs font-bold text-slate-400 mb-1 block">Estoque</label><input value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
                 )}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-400 mb-1 block">Categoria</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none"
-                  >
-                    {formData.type === 'servico' ? (
-                      <>
-                        <option value="cabelo">✂️ Cabelo</option>
-                        <option value="barba">🧔 Barba</option>
-                        <option value="combos">🔥 Combos Completos</option>
-                        <option value="tratamentos">✨ Tratamentos & Relax</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="produtos">📦 Produtos & Pomadas</option>
-                        <option value="combos">🎁 Kits & Combos Promocionais</option>
-                      </>
-                    )}
+                  <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none">
+                    {formData.type === 'servico' ? (<><option value="cabelo">Cabelo</option><option value="barba">Barba</option><option value="combos">Combos</option><option value="tratamentos">Tratamentos</option></>) : (<><option value="produtos">Produtos</option><option value="combos">Kits</option></>)}
                   </select>
                 </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 mb-1 block">Pontos Fidelidade</label>
-                  <input 
-                    type="number" 
-                    value={formData.pointsReward} 
-                    onChange={e => setFormData({...formData, pointsReward: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" 
-                    placeholder="Ex: 20 pts" 
-                  />
-                </div>
+                <div><label className="text-xs font-bold text-slate-400 mb-1 block">Pontos Fidelidade</label><input type="number" value={formData.pointsReward} onChange={e => setFormData({...formData, pointsReward: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none" /></div>
               </div>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.popular} 
-                    onChange={e => setFormData({...formData, popular: e.target.checked})} 
-                    className="w-4 h-4 rounded border-slate-700 text-amber-500 focus:ring-amber-400 bg-slate-900"
-                  />
-                  <div className="text-xs">
-                    <span className="font-semibold text-white">⭐ Marcar como Destaque / Mais Pedido</span>
-                    <p className="text-[10px] text-slate-400">Exibirá o badge dourado de recomendação para clientes e no WhatsApp Bot</p>
-                  </div>
-                </label>
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                <input type="checkbox" checked={formData.popular} onChange={e => setFormData({...formData, popular: e.target.checked})} className="w-4 h-4 rounded border-slate-700 text-amber-500 focus:ring-amber-400 bg-slate-900" />
+                <span className="text-xs font-semibold text-white">Marcar como Destaque</span>
+              </label>
             </div>
-
             <div className="pt-3 border-t border-slate-800 flex gap-2">
-              <button 
-                type="button" 
-                onClick={() => setIsModalOpen(false)} 
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
-              >
-                {isSubmitting ? 'Salvando...' : editingItem ? 'Atualizar' : 'Salvar'}
-              </button>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition">Cancelar</button>
+              <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">{isSubmitting ? 'Salvando...' : editingItem ? 'Atualizar' : 'Salvar'}</button>
             </div>
           </form>
         </div>
