@@ -173,7 +173,7 @@ export default function WhatsAppSimulationPage() {
           timestamp: timeStr,
           intent: brainOutput.intent as any,
           quickReplies: brainOutput.quickReplies,
-          component: brainOutput.component,
+          component: brainOutput.component as any,
           payload: brainOutput.componentData
         };
 

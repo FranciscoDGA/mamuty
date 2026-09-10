@@ -91,7 +91,7 @@ export function processUserMessage(
   }
 
   // B) HORARIO DE FUNCIONAMENTO
-  if (intent === 'HORARIO_FUNCIONAMENTO') {
+  if (intent === 'BUSINESS_HOURS') {
     const texto = consultar_funcionamento(todayIso);
     return {
       reply: {
@@ -112,7 +112,7 @@ export function processUserMessage(
   }
 
   // C) CONSULTAR SERVIÇOS E PREÇOS
-  if (intent === 'CONSULTAR_SERVICOS') {
+  if (intent === 'SERVICE_LIST') {
     const { texto, services: ativos } = consultar_servicos(services);
     return {
       reply: {
@@ -134,7 +134,7 @@ export function processUserMessage(
   }
 
   // D) CONSULTAR DISPONIBILIDADE ("Tem vaga hoje?")
-  if (intent === 'CONSULTAR_DISPONIBILIDADE') {
+  if (intent === 'CHECK_AVAILABILITY') {
     const res = consultar_disponibilidade_acao(todayIso, appointments, barbers, 40);
     const textoVagas = formatar_vagas_whatsapp(res, 'Hoje');
 
@@ -161,7 +161,7 @@ export function processUserMessage(
   }
 
   // E) CANCELAR AGENDAMENTO
-  if (intent === 'CANCELAR_AGENDAMENTO') {
+  if (intent === 'CANCEL_APPOINTMENT') {
     const userPhone = currentCustomer?.phone || draft.customerPhone || '';
     const cleanPhone = userPhone.replace(/\D/g, '');
 
@@ -204,7 +204,7 @@ export function processUserMessage(
   }
 
   // F) REAGENDAR
-  if (intent === 'REAGENDAR') {
+  if (intent === 'RESCHEDULE_APPOINTMENT') {
     return {
       reply: {
         id: 'msg-' + Date.now(),
@@ -223,7 +223,7 @@ export function processUserMessage(
   }
 
   // G) INFORMAÇÕES GERAIS
-  if (intent === 'INFORMACOES_GERAIS') {
+  if (intent === 'INFORMACOES_GERAIS' || intent === 'ADDRESS') {
     return {
       reply: {
         id: 'msg-' + Date.now(),
@@ -247,7 +247,7 @@ export function processUserMessage(
       sender: 'marcos',
       text: `Olá! 👋 Sou o *Marcos*, assistente digital da *Barbearia Mamuty*.\n\nComo posso ajudar você hoje?\n\n• Escolha uma opção rápida abaixo ou envie sua dúvida:`,
       timestamp: timeStr,
-      intent: 'SAUDACAO',
+      intent: 'GREETING',
       quickReplies: [
         { label: 'Quero agendar', action: 'INICIAR_AGENDAMENTO' },
         { label: 'Tem vaga hoje?', action: 'VER_HORARIOS_HOJE' },

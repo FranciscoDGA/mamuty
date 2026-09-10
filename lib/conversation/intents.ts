@@ -16,7 +16,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('dono') ||
     norm.includes('falar com o hemerson')
   ) {
-    return 'FALAR_COM_HUMANO';
+    return 'HUMAN_HANDOFF';
   }
 
   // 2. Cancelar Agendamento
@@ -24,9 +24,11 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('cancelar') ||
     norm.includes('desmarcar') ||
     norm.includes('nao vou poder ir') ||
-    norm.includes('nao posso ir')
+    norm.includes('não vou poder ir') ||
+    norm.includes('nao posso ir') ||
+    norm.includes('não posso ir')
   ) {
-    return 'CANCELAR_AGENDAMENTO';
+    return 'CANCEL_APPOINTMENT';
   }
 
   // 3. Reagendar
@@ -37,7 +39,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('reagendar') ||
     norm.includes('outro dia')
   ) {
-    return 'REAGENDAR';
+    return 'RESCHEDULE_APPOINTMENT';
   }
 
   // 4. Iniciar Agendamento
@@ -50,7 +52,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm === 'agendar' ||
     norm === 'marcar'
   ) {
-    return 'INICIAR_AGENDAMENTO';
+    return 'START_BOOKING';
   }
 
   // 5. Consultar Disponibilidade / Vaga
@@ -63,7 +65,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('tem vaga hoje') ||
     norm.includes('vagas')
   ) {
-    return 'CONSULTAR_DISPONIBILIDADE';
+    return 'CHECK_AVAILABILITY';
   }
 
   // 6. Consultar Serviços e Preços
@@ -77,7 +79,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('quais servicos') ||
     norm.includes('servicos')
   ) {
-    return 'CONSULTAR_SERVICOS';
+    return 'SERVICE_LIST';
   }
 
   // 7. Horário de Funcionamento
@@ -91,7 +93,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('estao funcionando') ||
     norm.includes('esta aberto')
   ) {
-    return 'HORARIO_FUNCIONAMENTO';
+    return 'BUSINESS_HOURS';
   }
 
   // 8. Informações Gerais (Endereço, Formas de Pagamento)
@@ -105,7 +107,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.includes('forma de pagamento') ||
     norm.includes('pagamento')
   ) {
-    return 'INFORMACOES_GERAIS';
+    return 'ADDRESS';
   }
 
   // 9. Saudações
@@ -119,8 +121,8 @@ export function classificarIntencao(texto: string): IntentType {
     norm === 'ola mamuty' ||
     norm === 'oi marcos'
   ) {
-    return 'SAUDACAO';
+    return 'GREETING';
   }
 
-  return 'OUTROS';
+  return 'UNKNOWN';
 }

@@ -57,6 +57,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clientes', label: 'Clientes', icon: Users },
     { href: '/admin/servicos', label: 'Serviços & Produtos', icon: Scissors },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
+    { href: '/admin/automacoes', label: 'Automações', icon: Sparkles },
+    { href: '/admin/whatsapp', label: 'WhatsApp Monitor', icon: Sparkles },
     { href: '/admin/marketing', label: 'Marketing & QR Code', icon: Sparkles },
     { href: '/admin/ajuda', label: 'Ajuda & Treinamento', icon: HelpCircle, isSpecial: true },
     { href: '/admin/configuracoes', label: 'Configurações', icon: Settings },
