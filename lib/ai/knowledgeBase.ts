@@ -135,8 +135,8 @@ export const MAMUTY_KNOWLEDGE_BASE: {
       ativo: true
     },
     {
-      id: 'barber-doglas',
-      nome: 'Doglas',
+      id: 'barber-douglas',
+      nome: 'Douglas',
       titulo: 'Especialista em Degradê & Barba',
       especialidades: ['Fade Navalhado', 'Degradê na Régua', 'Barboterapia', 'Pezinho'],
       ativo: true
@@ -147,7 +147,7 @@ export const MAMUTY_KNOWLEDGE_BASE: {
     'Se o cliente perguntar por corte infantil, química ou outros serviços não listados, avisar que não consta no catálogo oficial e oferecer encaminhamento para a equipe humana.',
     'Sempre conduzir para o agendamento de forma amigável e acolhedora, sem respostas gigantescas.',
     'Respeitar rigorosamente o intervalo de almoço das 12h às 14h e o fechamento do dia.',
-    'Sempre sugerir horários e perguntar a preferência de barbeiro entre mamuty.barber e Doglas.'
+    'Sempre sugerir horários e perguntar a preferência de barbeiro entre mamuty.barber e Douglas.'
   ],
 
   regrasComportamento: [

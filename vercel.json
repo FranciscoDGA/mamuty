@@ -1,10 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/reminders",
-      "schedule": "*/10 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/logo.png",
@@ -19,7 +13,7 @@
       ]
     },
     {
-      "source": "/barber-doglas.jpg",
+      "source": "/barber-douglas.jpg",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]

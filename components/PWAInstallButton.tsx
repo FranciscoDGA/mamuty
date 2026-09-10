@@ -5,10 +5,12 @@ import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useIsMounted } from '@/hooks/useIsMounted';
 import { Download, Share2, PlusSquare, X } from 'lucide-react';
 
-export const PWAInstallButton: React.FC<{ variant?: 'compact' | 'full' }> = ({ variant = 'compact' }) => {
+export const PWAInstallButton: React.FC<{ variant?: 'compact' | 'full'; label?: string }> = ({ variant = 'compact', label }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const isMounted = useIsMounted();
+
+  const btnLabel = label || 'Instalar App Mamuty';
 
   if (!isMounted || isInstalled) {
     return null;
@@ -24,7 +26,7 @@ export const PWAInstallButton: React.FC<{ variant?: 'compact' | 'full' }> = ({ v
           className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
         >
           <Download className="w-5 h-5 text-slate-950" />
-          <span>Instalar App Mamuty</span>
+          <span>{btnLabel}</span>
         </button>
       );
     }

@@ -281,7 +281,7 @@ WHERE NOT EXISTS (SELECT 1 FROM public.services LIMIT 1);
 INSERT INTO public.barbers (name, specialty, description, photo_url, active)
 SELECT * FROM (VALUES
   ('mamuty.barber', 'Degradê, Barba, Corte Tradicional', 'Barbeiro especialista em degradê e acabamento navalhado', '/barber-hemerson.jpg', true),
-  ('Doglas', 'Corte Social, Barba', 'Barbeiro especialista em corte social e barba', '/barber-doglas.jpg', true)
+  ('Douglas', 'Corte Social, Barba', 'Barbeiro especialista em corte social e barba', '/barber-douglas.jpg', true)
 ) AS v(name, specialty, description, photo_url, active)
 WHERE NOT EXISTS (SELECT 1 FROM public.barbers LIMIT 1);
 

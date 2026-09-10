@@ -532,7 +532,7 @@ export async function pensarEResponderMarcos(
       component: 'barbers_list',
       quickReplies: [
         { label: 'mamuty.barber', action: 'SELECT_BARBER', payload: { barberName: 'mamuty.barber' } },
-        { label: 'Doglas', action: 'SELECT_BARBER', payload: { barberName: 'Doglas' } },
+        { label: 'Douglas', action: 'SELECT_BARBER', payload: { barberName: 'Douglas' } },
         { label: 'Qualquer profissional', action: 'SELECT_BARBER', payload: { barberName: 'Qualquer profissional' } }
       ],
       newDraftState: { service: srv }
@@ -547,7 +547,7 @@ export async function pensarEResponderMarcos(
       component: 'barbers_list',
       quickReplies: [
         { label: 'mamuty.barber', action: 'SELECT_BARBER', payload: { barberName: 'mamuty.barber' } },
-        { label: 'Doglas', action: 'SELECT_BARBER', payload: { barberName: 'Doglas' } },
+        { label: 'Douglas', action: 'SELECT_BARBER', payload: { barberName: 'Douglas' } },
         { label: 'Qualquer profissional', action: 'SELECT_BARBER', payload: { barberName: 'Qualquer profissional' } }
       ],
       newDraftState: { service: srv }
@@ -562,7 +562,7 @@ export async function pensarEResponderMarcos(
       component: 'barbers_list',
       quickReplies: [
         { label: 'mamuty.barber', action: 'SELECT_BARBER', payload: { barberName: 'mamuty.barber' } },
-        { label: 'Doglas', action: 'SELECT_BARBER', payload: { barberName: 'Doglas' } }
+        { label: 'Douglas', action: 'SELECT_BARBER', payload: { barberName: 'Douglas' } }
       ],
       newDraftState: { service: srv }
     };
@@ -576,7 +576,7 @@ export async function pensarEResponderMarcos(
       component: 'barbers_list',
       quickReplies: [
         { label: 'mamuty.barber', action: 'SELECT_BARBER', payload: { barberName: 'mamuty.barber' } },
-        { label: 'Doglas', action: 'SELECT_BARBER', payload: { barberName: 'Doglas' } }
+        { label: 'Douglas', action: 'SELECT_BARBER', payload: { barberName: 'Douglas' } }
       ],
       newDraftState: { service: srv }
     };
@@ -598,7 +598,7 @@ export async function pensarEResponderMarcos(
   }
 
   if (norm.includes('doglas')) {
-    const barber = context.barbers.find(b => b.name === 'Doglas') || context.barbers[1];
+    const barber = context.barbers.find(b => b.name === 'Douglas') || context.barbers[1];
     return {
       reply: `Beleza, com o *${barber.name}*! 💈\n\nPara qual dia?`,
       intent: 'SELECT_BARBER',

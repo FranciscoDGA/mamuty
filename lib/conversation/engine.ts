@@ -328,7 +328,7 @@ function handleStructuredAction(
         payload: { barbers },
         quickReplies: [
           { label: 'mamuty.barber', action: 'ESCOLHER_BARBEIRO', payload: { barberName: 'mamuty.barber' } },
-          { label: 'Doglas', action: 'ESCOLHER_BARBEIRO', payload: { barberName: 'Doglas' } },
+          { label: 'Douglas', action: 'ESCOLHER_BARBEIRO', payload: { barberName: 'Douglas' } },
           { label: 'Qualquer profissional', action: 'ESCOLHER_BARBEIRO', payload: { barberName: 'Qualquer profissional' } }
         ]
       },

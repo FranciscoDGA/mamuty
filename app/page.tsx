@@ -12,6 +12,7 @@ import {
   Clock,
   Calendar,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 
 export default function Home() {
@@ -147,25 +148,25 @@ export default function Home() {
             </div>
           </div>
 
-          {/* PWA Install */}
-          <div className="pt-2">
-            <PWAInstallButton variant="full" />
+          {/* PWA Install Buttons */}
+          <div className="w-full max-w-xs space-y-2.5 pt-2">
+            <PWAInstallButton variant="full" label="Instalar Mamuty Cliente" />
+            <Link
+              href="/admin/login"
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/30 text-slate-300 hover:text-amber-400 font-bold shadow-lg transition-all active:scale-[0.98]"
+            >
+              <Download className="w-5 h-5" />
+              <span>Instalar Mamuty Admin</span>
+            </Link>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-4 px-4 text-center space-y-3">
+      <footer className="py-4 px-4 text-center">
         <p className="text-[11px] text-slate-600">
           ~Mamuty barbearia estilo forte. &bull; Cumaru do Norte - PA
         </p>
-        <Link 
-          href="/admin/login" 
-          className="inline-flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-amber-400 transition py-1 px-3 rounded-lg hover:bg-slate-800/50"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-600 hover:bg-amber-400"></span>
-          Painel Admin
-        </Link>
       </footer>
     </div>
   );

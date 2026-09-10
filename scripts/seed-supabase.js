@@ -19,10 +19,10 @@ async function seed() {
       active: true
     },
     {
-      name: 'Doglas',
+      name: 'Douglas',
       description: 'Especialista em Degradê & Barba',
       specialty: 'Degradê / Fade & Barba',
-      photo_url: '/barber-doglas.jpg',
+      photo_url: '/barber-douglas.jpg',
       active: true
     }
   ];
@@ -40,7 +40,7 @@ async function seed() {
   }
 
   // Desativar barbeiros que não fazem parte da Mamuty
-  await supabase.from('barbers').update({ active: false }).not('name', 'in', '("mamuty.barber","Doglas")');
+  await supabase.from('barbers').update({ active: false }).not('name', 'in', '("mamuty.barber","Douglas")');
 
   // 2. Sincronizar Serviços Oficiais da Sprint 2
   console.log('--- 2. Sincronizando Serviços Oficiais ---');
