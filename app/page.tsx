@@ -155,15 +155,16 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 px-4 text-center space-y-2">
+      <footer className="py-4 px-4 text-center space-y-3">
         <p className="text-[11px] text-slate-600">
           ~Mamuty barbearia estilo forte. &bull; Cumaru do Norte - PA
         </p>
         <Link 
           href="/admin/login" 
-          className="text-[9px] text-slate-700 hover:text-slate-500 transition inline-block"
+          className="inline-flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-amber-400 transition py-1 px-3 rounded-lg hover:bg-slate-800/50"
         >
-          •
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-600 hover:bg-amber-400"></span>
+          Painel Admin
         </Link>
       </footer>
     </div>
