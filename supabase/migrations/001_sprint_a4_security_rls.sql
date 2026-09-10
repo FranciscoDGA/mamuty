@@ -278,11 +278,11 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM public.services LIMIT 1);
 
 -- Inserir barbeiros padrão
-INSERT INTO public.barbers (name, specialty, description, active)
+INSERT INTO public.barbers (name, specialty, description, photo_url, active)
 SELECT * FROM (VALUES
-  ('mamuty.barber', 'Degradê, Barba, Corte Tradicional', 'Barbeiro especialista em degradê e acabamento navalhado', true),
-  ('Doglas', 'Corte Social, Barba', 'Barbeiro especialista em corte social e barba', true)
-) AS v(name, specialty, description, active)
+  ('mamuty.barber', 'Degradê, Barba, Corte Tradicional', 'Barbeiro especialista em degradê e acabamento navalhado', '/barber-hemerson.jpg', true),
+  ('Doglas', 'Corte Social, Barba', 'Barbeiro especialista em corte social e barba', '/barber-doglas.jpg', true)
+) AS v(name, specialty, description, photo_url, active)
 WHERE NOT EXISTS (SELECT 1 FROM public.barbers LIMIT 1);
 
 -- Configurações iniciais do negócio

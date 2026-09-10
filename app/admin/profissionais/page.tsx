@@ -91,7 +91,7 @@ export default function ProfissionaisPage() {
             <div key={barber.id} className={`bg-slate-900/60 p-5 rounded-2xl border transition ${isActive ? 'border-slate-800 hover:border-slate-700' : 'border-rose-900/30 opacity-60'}`}>
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-700 shrink-0 relative">
-                  <Image src={barber.avatarUrl || 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=400&q=80'} alt={barber.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                  <Image src={barber.avatarUrl || '/barber-hemerson.jpg'} alt={barber.name} fill className="object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

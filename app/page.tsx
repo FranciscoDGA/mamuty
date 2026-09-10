@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useIsMounted } from '@/hooks/useIsMounted';
 import { useApp } from '@/context/AppContext';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
@@ -16,6 +17,63 @@ import {
 export default function Home() {
   const isMounted = useIsMounted();
   const { salonConfig } = useApp();
+  const router = useRouter();
+  
+  // Acesso secreto: toque 5x no logo (usando refs para confiabilidade)
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showAdminHint, setShowAdminHint] = useState(false);
+
+  const handleSecretTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const now = Date.now();
+    const timeDiff = now - lastTapRef.current;
+    
+    // Reset se passou mais de 1.5 segundos
+    if (timeDiff > 1500) {
+      tapCountRef.current = 1;
+    } else {
+      tapCountRef.current++;
+    }
+    
+    lastTapRef.current = now;
+    
+    // Limpar timer anterior
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    
+    // Mostrar hint no 3º toque
+    if (tapCountRef.current === 3) {
+      setShowAdminHint(true);
+    }
+    
+    // Verificar se chegou a 5 toques
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      setShowAdminHint(false);
+      router.push('/admin/login');
+      return;
+    }
+    
+    // Reset após 2 segundos
+    timerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+      setShowAdminHint(false);
+    }, 2000);
+  }, [router]);
+
+  // Cleanup do timer
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   if (!isMounted) {
     return (
@@ -34,9 +92,22 @@ export default function Home() {
       {/* Main Content — Centered Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm flex flex-col items-center text-center space-y-8">
-          {/* Logo */}
-          <div className="w-28 h-28 rounded-full overflow-hidden border-3 border-amber-500/60 bg-black shadow-2xl shadow-amber-500/20">
-            <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
+          {/* Logo - Toque 5x para Admin */}
+          <div className="relative">
+            <div 
+              onClick={handleSecretTap}
+              onTouchEnd={handleSecretTap}
+              className="w-28 h-28 rounded-full overflow-hidden border-3 border-amber-500/60 bg-black shadow-2xl shadow-amber-500/20 cursor-pointer active:scale-95 transition-transform select-none touch-manipulation"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover pointer-events-none" />
+            </div>
+            {/* Hint secreto */}
+            {showAdminHint && (
+              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                <span className="text-[10px] text-amber-400/60 font-medium">Mais 2 toques...</span>
+              </div>
+            )}
           </div>
 
           {/* Brand */}
@@ -84,10 +155,16 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 px-4 text-center">
+      <footer className="py-4 px-4 text-center space-y-2">
         <p className="text-[11px] text-slate-600">
           ~Mamuty barbearia estilo forte. &bull; Cumaru do Norte - PA
         </p>
+        <Link 
+          href="/admin/login" 
+          className="text-[9px] text-slate-700 hover:text-slate-500 transition inline-block"
+        >
+          •
+        </Link>
       </footer>
     </div>
   );

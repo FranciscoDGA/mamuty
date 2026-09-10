@@ -230,21 +230,21 @@ export default function WhatsAppSimulationPage() {
 
           <div className="relative">
             <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-amber-500/50 bg-slate-900 shadow-lg shadow-amber-500/10">
-              <img src="/logo.png" alt="Mamuty Barbearia" className="w-full h-full object-cover" />
+              <img src="/marcos-avatar.jpg" alt="Marcos - Assistente Digital" className="w-full h-full object-cover" />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#111827] rounded-full shadow-sm"></span>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-white text-sm sm:text-base tracking-tight">Mamuty Barbearia</h1>
+              <h1 className="font-bold text-white text-sm sm:text-base tracking-tight">Marcos</h1>
               <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold tracking-wide uppercase">
-                IA Marcos
+                Assistente Digital
               </span>
             </div>
             <p className="text-[11px] text-emerald-400/80 font-medium flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-              Online &bull; Assistente Digital
+              Online &bull; Mamuty Barbearia
             </p>
           </div>
         </div>
@@ -324,8 +324,13 @@ export default function WhatsAppSimulationPage() {
           return (
             <div
               key={msg.id}
-              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} animate-in fade-in`}
+              className={`flex ${isUser ? 'justify-end' : 'justify-start'} items-end gap-2 animate-in fade-in`}
             >
+              {!isUser && (
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/30 shrink-0 mb-1">
+                  <img src="/marcos-avatar.jpg" alt="Marcos" className="w-full h-full object-cover" />
+                </div>
+              )}
               <div
                 className={`max-w-[85%] sm:max-w-[78%] rounded-2xl p-3.5 shadow-lg relative ${
                   isUser
@@ -517,7 +522,10 @@ export default function WhatsAppSimulationPage() {
         })}
 
         {isTyping && (
-          <div className="flex items-start gap-2 animate-in fade-in">
+          <div className="flex items-end gap-2 animate-in fade-in">
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/30 shrink-0 mb-1">
+              <img src="/marcos-avatar.jpg" alt="Marcos" className="w-full h-full object-cover" />
+            </div>
             <div className="bg-slate-800/80 text-slate-300 rounded-2xl rounded-tl-md px-4 py-3 border border-slate-700/40 flex items-center gap-2.5 shadow-lg">
               <div className="flex gap-1">
                 <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>

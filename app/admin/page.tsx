@@ -25,7 +25,10 @@ import {
   AlertCircle,
   BarChart3,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import DashboardCharts from '@/components/admin/DashboardCharts';
 
 export default function AdminPage() {
   const { 
@@ -290,6 +293,13 @@ export default function AdminPage() {
           </Link>
         ))}
       </div>
+
+      {/* Dashboard Charts */}
+      <DashboardCharts 
+        appointments={appointments} 
+        barbers={barbers} 
+        services={services} 
+      />
 
       {/* Filters */}
       <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">

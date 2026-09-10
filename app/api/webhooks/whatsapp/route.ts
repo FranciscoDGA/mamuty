@@ -7,6 +7,7 @@ import { Appointment, Barber, Customer, Service } from '@/lib/types';
 import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
 import { processarNovoAgendamento, processarConclusaoAtendimento } from '@/lib/ai/automation';
 import { adicionarJobs } from '@/lib/ai/automationQueue';
+import { checkBookingRateLimit, checkApiRateLimit } from '@/lib/rateLimit';
 
 // ============================================
 // SPRINT 7 — WEBHOOK WHATSAPP (Z-API)
@@ -56,6 +57,14 @@ export async function POST(request: NextRequest) {
     // 4. Normalizar telefone
     const normalizedPhone = normalizarPhone(phone);
     const phoneParaBusca = extrairPhoneParaBusca(normalizedPhone);
+
+    // 4.1 Rate limiting por telefone
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const apiRateLimit = checkApiRateLimit(ip);
+    if (!apiRateLimit.allowed) {
+      console.log(`[RateLimit] API limit exceeded for IP: ${ip}`);
+      return NextResponse.json({ ok: false, error: 'Rate limit exceeded' }, { status: 429 });
+    }
 
     console.log(`[Webhook] Mensagem recebida de ${normalizedPhone}: "${messageBody.substring(0, 50)}..."`);
 

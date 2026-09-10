@@ -15,14 +15,14 @@ async function seed() {
       name: 'mamuty.barber',
       description: 'Fundador & Barbeiro Chefe (Hemerson Barber)',
       specialty: 'Degradê, Tesoura & Barba',
-      photo_url: '/logo.png',
+      photo_url: '/barber-hemerson.jpg',
       active: true
     },
     {
       name: 'Doglas',
       description: 'Especialista em Degradê & Barba',
       specialty: 'Degradê / Fade & Barba',
-      photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80',
+      photo_url: '/barber-doglas.jpg',
       active: true
     }
   ];

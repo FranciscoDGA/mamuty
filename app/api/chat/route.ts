@@ -3,9 +3,20 @@ import { supabase } from '@/lib/supabase';
 import { INITIAL_SERVICES, INITIAL_BARBERS, INITIAL_APPOINTMENTS } from '@/lib/data';
 import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
 import { pensarEResponderMarcos } from '@/lib/ai/brain';
+import { checkApiRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimit = checkApiRateLimit(ip);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ 
+        error: 'Muitas requisições. Aguarde um momento.',
+        retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000)
+      }, { status: 429 });
+    }
+
     const { messages, draft, currentCustomer } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
