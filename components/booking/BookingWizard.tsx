@@ -44,6 +44,9 @@ export const BookingWizard: React.FC = () => {
     isLoading,
     currentCustomer,
     preselectedBarberId,
+    barberSchedules,
+    blockedSlots,
+    closedDays,
   } = useApp();
 
   const [step, setStep] = useState<number>(0);
@@ -62,6 +65,8 @@ export const BookingWizard: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [scannedBarberParam, setScannedBarberParam] = useState<string | null>(null);
+  const [calendarPage, setCalendarPage] = useState(0);
+  const DAYS_PER_PAGE = 7;
 
   useEffect(() => {
     const stored = localStorage.getItem(CLIENT_SESSION_KEY);
@@ -107,10 +112,10 @@ export const BookingWizard: React.FC = () => {
     }
   }, [scannedBarberParam, barbers]);
 
-  const availableDates = useMemo(() => {
-    const dates = [];
+  const allCalendarDays = useMemo(() => {
+    const days = [];
     const today = new Date();
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 30; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       const iso = d.toISOString().split('T')[0];
@@ -118,10 +123,28 @@ export const BookingWizard: React.FC = () => {
       const dayNum = d.getDate();
       const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
       const isSunday = d.getDay() === 0;
-      dates.push({ iso, dayName, dayNum, monthName, isSunday });
+
+      // Check if shop is closed
+      const isClosed = closedDays.some(c => c.date === iso);
+
+      // Check if barber is available (simplified check)
+      let barberAvailable = true;
+      if (selectedBarber && selectedBarber.id !== 'any') {
+        const dayOff = barberSchedules.find(s => s.barberId === selectedBarber.id)?.dayOff || [];
+        barberAvailable = !dayOff.includes(d.getDay());
+      }
+
+      days.push({ iso, dayName, dayNum, monthName, isSunday, isClosed, barberAvailable });
     }
-    return dates;
-  }, []);
+    return days;
+  }, [selectedBarber, closedDays, barberSchedules]);
+
+  const availableDates = useMemo(() => {
+    const start = calendarPage * DAYS_PER_PAGE;
+    return allCalendarDays.slice(start, start + DAYS_PER_PAGE);
+  }, [allCalendarDays, calendarPage]);
+
+  const totalCalendarPages = Math.ceil(allCalendarDays.length / DAYS_PER_PAGE);
 
   const availabilityResult = useMemo(() => {
     return consultarDisponibilidade(
@@ -131,9 +154,12 @@ export const BookingWizard: React.FC = () => {
         serviceDurationMinutes: selectedService?.durationMinutes || 40,
       },
       appointments,
-      barbers
+      barbers,
+      barberSchedules,
+      blockedSlots,
+      closedDays
     );
-  }, [selectedDate, selectedBarber, selectedService, appointments, barbers]);
+  }, [selectedDate, selectedBarber, selectedService, appointments, barbers, barberSchedules, blockedSlots, closedDays]);
 
   const handlePhoneChange = async (val: string) => {
     setCustomerPhone(val);
@@ -440,27 +466,61 @@ export const BookingWizard: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-white">Qual dia?</h2>
             <p className="text-sm text-slate-400 mt-1">
-              {availabilityResult.funcionamento.diaSemana}: até {availabilityResult.funcionamento.fechamento}
+              {availabilityResult.isClosedDay
+                ? `❌ ${availabilityResult.closedDayReason}`
+                : `${availabilityResult.funcionamento.diaSemana}: até ${availabilityResult.funcionamento.fechamento}`
+              }
             </p>
           </div>
 
+          {/* Calendar Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setCalendarPage(p => Math.max(0, p - 1))}
+              disabled={calendarPage === 0}
+              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-xs text-slate-500 font-medium">
+              Semana {calendarPage + 1} de {totalCalendarPages}
+            </span>
+            <button
+              onClick={() => setCalendarPage(p => Math.min(totalCalendarPages - 1, p + 1))}
+              disabled={calendarPage >= totalCalendarPages - 1}
+              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {availableDates.map((date) => (
-              <button
-                key={date.iso}
-                onClick={() => { setSelectedDate(date.iso); setStep(4); }}
-                className={`p-4 flex flex-col items-center justify-center rounded-2xl border transition ${
-                  selectedDate === date.iso
-                    ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold shadow-md'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-600 active:scale-[0.98]'
-                }`}
-              >
-                <span className="text-xs font-bold uppercase tracking-wider mb-1">{date.dayName}</span>
-                <span className="text-2xl font-extrabold">{date.dayNum}</span>
-                <span className="text-[10px] text-slate-400">{date.monthName}</span>
-                {date.isSunday && <span className="text-[9px] text-amber-400/90 mt-1 font-bold">Até 12h</span>}
-              </button>
-            ))}
+            {availableDates.map((date) => {
+              const isDisabled = date.isClosed || (date.isSunday) || (selectedBarber && !date.barberAvailable && selectedBarber.id !== 'any');
+              return (
+                <button
+                  key={date.iso}
+                  onClick={() => { if (!isDisabled) { setSelectedDate(date.iso); setStep(4); } }}
+                  disabled={!!isDisabled}
+                  className={`p-4 flex flex-col items-center justify-center rounded-2xl border transition ${
+                    isDisabled
+                      ? 'bg-slate-950/50 border-slate-800/50 text-slate-600 cursor-not-allowed opacity-50'
+                      : selectedDate === date.iso
+                      ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold shadow-md'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-600 active:scale-[0.98]'
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase tracking-wider mb-1">{date.dayName}</span>
+                  <span className="text-2xl font-extrabold">{date.dayNum}</span>
+                  <span className="text-[10px] text-slate-400">{date.monthName}</span>
+                  {date.isSunday && <span className="text-[9px] text-amber-400/90 mt-1 font-bold">Até 12h</span>}
+                  {date.isClosed && <span className="text-[9px] text-rose-400/90 mt-1 font-bold">Fechado</span>}
+                  {!date.isClosed && !date.isSunday && date.barberAvailable && selectedBarber && selectedBarber.id !== 'any' && (
+                    <span className="text-[9px] text-emerald-400/90 mt-1 font-bold">Folga</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <button onClick={handlePrevStep} className="text-sm text-slate-400 hover:text-white flex items-center gap-1 transition">
@@ -475,28 +535,46 @@ export const BookingWizard: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-white">Qual horário?</h2>
             <p className="text-sm text-slate-400 mt-1">
-              {availabilityResult.funcionamento.temIntervalo ? 'Almoço: 12h às 14h' : 'Horário contínuo'}
+              {availabilityResult.isClosedDay
+                ? `❌ ${availabilityResult.closedDayReason}`
+                : availabilityResult.funcionamento.temIntervalo
+                ? `Almoço: 12h às 14h | Fecha às ${availabilityResult.funcionamento.fechamento}`
+                : `Horário contínuo | Fecha às ${availabilityResult.funcionamento.fechamento}`
+              }
             </p>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500/50"></span> Disponível</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-800 border border-slate-700 line-through"></span> Ocupado</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500/30 border border-amber-500/50"></span> Almoço</span>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
             {availabilityResult.slots.map(slotObj => {
               const isFree = slotObj.disponivel;
               const isChosen = selectedTime === slotObj.horario;
+              const isLunch = slotObj.motivo?.includes('Almoço');
               return (
                 <button
                   key={slotObj.horario}
                   disabled={!isFree}
                   onClick={() => { setSelectedTime(slotObj.horario); setStep(5); }}
+                  title={slotObj.motivo || 'Disponível'}
                   className={`p-3 rounded-xl border text-sm font-bold transition text-center ${
                     !isFree
-                      ? 'opacity-30 bg-slate-950/80 border-slate-800 text-slate-500 cursor-not-allowed line-through'
+                      ? isLunch
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400/60 cursor-not-allowed'
+                        : 'opacity-40 bg-slate-950/80 border-slate-800 text-slate-500 cursor-not-allowed line-through'
                       : isChosen
                       ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-md'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-200 hover:border-slate-600 active:scale-95'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:border-emerald-500/60 active:scale-95'
                   }`}
                 >
                   {slotObj.horario}
+                  {isFree && <span className="block text-[9px] text-emerald-400/70 mt-0.5"> livre</span>}
+                  {!isFree && isLunch && <span className="block text-[9px] text-amber-400/60 mt-0.5"> almoço</span>}
                 </button>
               );
             })}

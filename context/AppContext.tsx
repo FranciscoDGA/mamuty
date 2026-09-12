@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appointment, Barber, Customer, Service, SalonConfig, FinancialTransaction, PaymentMethod } from '@/lib/types';
+import { Appointment, Barber, Customer, Service, SalonConfig, FinancialTransaction, PaymentMethod, BarberSchedule, BlockedSlot, ClosedDay } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import {
   INITIAL_SALON_CONFIG,
@@ -60,6 +60,17 @@ interface AppContextType {
   latestNewBooking: Appointment | null;
   dismissNewBookingAlert: () => void;
 
+  // Schedule Management
+  barberSchedules: BarberSchedule[];
+  blockedSlots: BlockedSlot[];
+  closedDays: ClosedDay[];
+  addBarberSchedule: (schedule: Omit<BarberSchedule, 'id'>) => void;
+  updateBarberSchedule: (id: string, data: Partial<BarberSchedule>) => void;
+  addBlockedSlot: (slot: Omit<BlockedSlot, 'id'>) => void;
+  removeBlockedSlot: (id: string) => void;
+  addClosedDay: (day: Omit<ClosedDay, 'id'>) => void;
+  removeClosedDay: (id: string) => void;
+
   refreshData: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -83,8 +94,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Schedule Management State
+  const [barberSchedules, setBarberSchedules] = useState<BarberSchedule[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
+  const [closedDays, setClosedDays] = useState<ClosedDay[]>([]);
+
   useEffect(() => {
     fetchData();
+    loadScheduleData();
   }, []);
 
   const fetchData = async () => {
@@ -604,6 +621,68 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const dismissNewBookingAlert = () => setLatestNewBooking(null);
 
+  // Schedule Management Functions
+  const SCHEDULE_STORAGE_KEY = 'mamuty_schedule_data';
+
+  const loadScheduleData = () => {
+    try {
+      const stored = localStorage.getItem(SCHEDULE_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        setBarberSchedules(data.barberSchedules || []);
+        setBlockedSlots(data.blockedSlots || []);
+        setClosedDays(data.closedDays || []);
+      }
+    } catch {}
+  };
+
+  const saveScheduleData = (schedules: BarberSchedule[], blocked: BlockedSlot[], closed: ClosedDay[]) => {
+    localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify({
+      barberSchedules: schedules,
+      blockedSlots: blocked,
+      closedDays: closed
+    }));
+  };
+
+  const addBarberSchedule = (schedule: Omit<BarberSchedule, 'id'>) => {
+    const newSchedule: BarberSchedule = { ...schedule, id: `sched-${Date.now()}` };
+    const updated = [...barberSchedules, newSchedule];
+    setBarberSchedules(updated);
+    saveScheduleData(updated, blockedSlots, closedDays);
+  };
+
+  const updateBarberSchedule = (id: string, data: Partial<BarberSchedule>) => {
+    const updated = barberSchedules.map(s => s.id === id ? { ...s, ...data } : s);
+    setBarberSchedules(updated);
+    saveScheduleData(updated, blockedSlots, closedDays);
+  };
+
+  const addBlockedSlot = (slot: Omit<BlockedSlot, 'id'>) => {
+    const newSlot: BlockedSlot = { ...slot, id: `block-${Date.now()}` };
+    const updated = [...blockedSlots, newSlot];
+    setBlockedSlots(updated);
+    saveScheduleData(barberSchedules, updated, closedDays);
+  };
+
+  const removeBlockedSlot = (id: string) => {
+    const updated = blockedSlots.filter(s => s.id !== id);
+    setBlockedSlots(updated);
+    saveScheduleData(barberSchedules, updated, closedDays);
+  };
+
+  const addClosedDay = (day: Omit<ClosedDay, 'id'>) => {
+    const newDay: ClosedDay = { ...day, id: `closed-${Date.now()}` };
+    const updated = [...closedDays, newDay];
+    setClosedDays(updated);
+    saveScheduleData(barberSchedules, blockedSlots, updated);
+  };
+
+  const removeClosedDay = (id: string) => {
+    const updated = closedDays.filter(d => d.id !== id);
+    setClosedDays(updated);
+    saveScheduleData(barberSchedules, blockedSlots, updated);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -641,6 +720,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addService,
         latestNewBooking,
         dismissNewBookingAlert,
+        barberSchedules,
+        blockedSlots,
+        closedDays,
+        addBarberSchedule,
+        updateBarberSchedule,
+        addBlockedSlot,
+        removeBlockedSlot,
+        addClosedDay,
+        removeClosedDay,
         refreshData: fetchData,
         isLoading,
         error,

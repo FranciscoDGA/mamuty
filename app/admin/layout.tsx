@@ -20,7 +20,8 @@ import {
   X,
   Loader2,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  Calendar
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -53,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/admin', label: 'Agenda & Cadeira', icon: LayoutDashboard },
+    { href: '/admin/agenda', label: 'Agenda Profissional', icon: Calendar },
     { href: '/admin/financeiro', label: 'Financeiro & Caixa', icon: DollarSign },
     { href: '/admin/clientes', label: 'Clientes', icon: Users },
     { href: '/admin/servicos', label: 'Serviços & Produtos', icon: Scissors },

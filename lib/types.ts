@@ -134,3 +134,25 @@ export interface SalonConfig {
   openingHours: string;
   loyaltyStampsGoal: number;
 }
+
+export interface BarberSchedule {
+  id: string;
+  barberId: string;
+  dayOff: number[]; // 0=Domingo, 1=Segunda, ..., 6=Sábado
+  blockedSlots: BlockedSlot[];
+}
+
+export interface BlockedSlot {
+  id: string;
+  barberId: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  reason?: string;
+}
+
+export interface ClosedDay {
+  id: string;
+  date: string; // YYYY-MM-DD
+  reason: string;
+}
