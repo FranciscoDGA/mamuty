@@ -10,8 +10,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Mamuty - Barbearia & Salão Masculino',
-  description: 'App PWA de agendamento online, galeria de fotos e portfólio dos barbeiros, notificações via WhatsApp, pagamentos integrados, programa de fidelidade e gestão da Barbearia Mamuty.',
+  title: 'Mamuty Barbearia - Agende seu Horário',
+  description: 'Agende seu horário na Barbearia Mamuty. Estilo forte em Cumaru do Norte - PA.',
   applicationName: 'Mamuty',
   appleWebApp: {
     capable: true,
@@ -27,15 +27,16 @@ export const metadata: Metadata = {
     apple: '/logo.png',
   },
   openGraph: {
-    title: 'Mamuty - Barbearia & Salão Masculino',
-    description: 'App PWA de agendamento online, galeria de fotos e portfólio dos barbeiros, notificações via WhatsApp, pagamentos integrados, programa de fidelidade e gestão da Barbearia Mamuty.',
+    title: 'Mamuty Barbearia - Agende seu Horário',
+    description: 'Agende seu horário na Barbearia Mamuty. Estilo forte em Cumaru do Norte - PA.',
     type: 'website',
     siteName: 'Mamuty Barbearia',
+    images: [{ url: '/logo.png', width: 512, height: 512, alt: 'Mamuty Barbearia' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mamuty - Barbearia & Salão Masculino',
-    description: 'App PWA de agendamento online, galeria de fotos e portfólio dos barbeiros, notificações via WhatsApp e fidelidade.',
+    title: 'Mamuty Barbearia - Agende seu Horário',
+    description: 'Agende seu horário na Barbearia Mamuty. Estilo forte em Cumaru do Norte - PA.',
   },
 };
 
