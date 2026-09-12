@@ -22,7 +22,16 @@ import {
   QrCode,
   Sparkles,
   Zap,
+  UserPlus,
+  Phone,
 } from 'lucide-react';
+
+const CLIENT_SESSION_KEY = 'mamuty_client_session';
+
+interface ClientSession {
+  name: string;
+  phone: string;
+}
 
 export const BookingWizard: React.FC = () => {
   const router = useRouter();
@@ -37,7 +46,7 @@ export const BookingWizard: React.FC = () => {
     preselectedBarberId,
   } = useApp();
 
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(0);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -55,6 +64,24 @@ export const BookingWizard: React.FC = () => {
   const [scannedBarberParam, setScannedBarberParam] = useState<string | null>(null);
 
   useEffect(() => {
+    const stored = localStorage.getItem(CLIENT_SESSION_KEY);
+    if (stored) {
+      try {
+        const parsed: ClientSession = JSON.parse(stored);
+        setCustomerName(parsed.name);
+        setCustomerPhone(parsed.phone);
+        setStep(1);
+      } catch {}
+    }
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const bParam = params.get('barbeiro') || params.get('barber') || params.get('b');
+      if (bParam) setScannedBarberParam(bParam);
+    }
+  }, []);
+
+  useEffect(() => {
     if (currentCustomer) {
       if (!customerName) setCustomerName(currentCustomer.name);
       if (!customerPhone) setCustomerPhone(currentCustomer.phone);
@@ -69,14 +96,6 @@ export const BookingWizard: React.FC = () => {
       if (match) setSelectedBarber(match);
     }
   }, [preselectedBarberId, barbers]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const bParam = params.get('barbeiro') || params.get('barber') || params.get('b');
-      if (bParam) setScannedBarberParam(bParam);
-    }
-  }, []);
 
   useEffect(() => {
     if (scannedBarberParam && barbers.length > 0) {
@@ -129,6 +148,12 @@ export const BookingWizard: React.FC = () => {
         setRecognizedCustomer(null);
       }
     }
+  };
+
+  const handleClientRegister = () => {
+    if (!customerName.trim() || !customerPhone.trim()) return;
+    localStorage.setItem(CLIENT_SESSION_KEY, JSON.stringify({ name: customerName.trim(), phone: customerPhone.trim() }));
+    setStep(1);
   };
 
   const handleNextStep = () => {
@@ -221,36 +246,38 @@ export const BookingWizard: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Step Progress */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
-        {stepsList.map((s, idx) => {
-          const Icon = s.icon;
-          const isActive = step === s.id;
-          const isPassed = step > s.id;
-          return (
-            <React.Fragment key={s.id}>
-              <button
-                onClick={() => {
-                  if (isPassed) setStep(s.id);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 ${
-                  isActive
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                    : isPassed
-                    ? 'text-emerald-400 hover:text-emerald-300 cursor-pointer'
-                    : 'text-slate-600'
-                }`}
-              >
-                <Icon className={`w-3 h-3 ${isActive ? 'text-amber-400' : isPassed ? 'text-emerald-400' : 'text-slate-600'}`} />
-                <span className="hidden sm:inline">{s.label}</span>
-                {isPassed && <Check className="w-2.5 h-2.5 text-emerald-400" />}
-              </button>
-              {idx < stepsList.length - 1 && (
-                <div className={`w-4 h-px shrink-0 ${isPassed ? 'bg-emerald-500/50' : 'bg-slate-800'}`} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+      {step >= 1 && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+          {stepsList.map((s, idx) => {
+            const Icon = s.icon;
+            const isActive = step === s.id;
+            const isPassed = step > s.id;
+            return (
+              <React.Fragment key={s.id}>
+                <button
+                  onClick={() => {
+                    if (isPassed) setStep(s.id);
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 ${
+                    isActive
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                      : isPassed
+                      ? 'text-emerald-400 hover:text-emerald-300 cursor-pointer'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  <Icon className={`w-3 h-3 ${isActive ? 'text-amber-400' : isPassed ? 'text-emerald-400' : 'text-slate-600'}`} />
+                  <span className="hidden sm:inline">{s.label}</span>
+                  {isPassed && <Check className="w-2.5 h-2.5 text-emerald-400" />}
+                </button>
+                {idx < stepsList.length - 1 && (
+                  <div className={`w-4 h-px shrink-0 ${isPassed ? 'bg-emerald-500/50' : 'bg-slate-800'}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
 
       {/* Scanned Barber Banner */}
       {scannedBarberParam && selectedBarber && (
@@ -258,6 +285,59 @@ export const BookingWizard: React.FC = () => {
           <Zap className="w-5 h-5 text-amber-400 shrink-0" />
           <p className="text-xs text-amber-300">
             Agendando com <strong>{selectedBarber.name}</strong> (detectado automaticamente)
+          </p>
+        </div>
+      )}
+
+      {/* STEP 0: CADASTRO CLIENTE */}
+      {step === 0 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="text-center py-4">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="w-8 h-8 text-amber-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Seja bem-vindo!</h2>
+            <p className="text-sm text-slate-400 mt-1">Para agendar, precisamos dos seus dados</p>
+          </div>
+
+          <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-400 mb-1.5 block">Seu nome *</label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={e => setCustomerName(e.target.value)}
+                placeholder="Como podemos te chamar?"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 mb-1.5 block">WhatsApp *</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value)}
+                  placeholder="(94) 99999-9999"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1.5">Usado para confirmar seu agendamento</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleClientRegister}
+            disabled={!customerName.trim() || !customerPhone.trim()}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:from-slate-700 disabled:to-slate-700 text-slate-950 font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition"
+          >
+            Começar <ChevronRight className="w-4 h-4" />
+          </button>
+
+          <p className="text-center text-[10px] text-slate-600">
+            Seus dados são salvos apenas no seu dispositivo
           </p>
         </div>
       )}
@@ -309,7 +389,6 @@ export const BookingWizard: React.FC = () => {
             <p className="text-sm text-slate-400 mt-1">Escolha seu barbeiro ou deixe com a gente</p>
           </div>
 
-          {/* Primeiro Disponível */}
           <button
             onClick={() => { setSelectedBarber({ id: 'any', name: 'Primeiro Disponível', role: 'Qualquer profissional livre', avatarUrl: '/logo.png', rating: 0, reviewsCount: 0, specialties: [], phone: '', bio: '', availableDays: [] } as Barber); setStep(3); }}
             className={`w-full p-4 rounded-2xl border transition text-left flex items-center gap-4 ${
@@ -327,7 +406,6 @@ export const BookingWizard: React.FC = () => {
             </div>
           </button>
 
-          {/* Barbers */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {barbers.map((barber) => (
               <button
@@ -434,8 +512,8 @@ export const BookingWizard: React.FC = () => {
       {step === 5 && (
         <div className="space-y-4 animate-in fade-in">
           <div>
-            <h2 className="text-xl font-bold text-white">Seus dados</h2>
-            <p className="text-sm text-slate-400 mt-1">Para confirmarmos seu agendamento</p>
+            <h2 className="text-xl font-bold text-white">Confirme seus dados</h2>
+            <p className="text-sm text-slate-400 mt-1">Está tudo certo?</p>
           </div>
 
           {submitError && (
@@ -445,34 +523,23 @@ export const BookingWizard: React.FC = () => {
             </div>
           )}
 
-          {recognizedCustomer && (
-            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Olá de volta, <strong>{recognizedCustomer.name}</strong>! Dados pré-preenchidos.</span>
-            </div>
-          )}
-
           <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div>
-              <label className="text-xs font-bold text-slate-400 mb-1.5 block">WhatsApp *</label>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={e => handlePhoneChange(e.target.value)}
-                placeholder="94 98443-9065"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
-              />
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <span className="text-amber-400 font-bold text-sm">{customerName.charAt(0)}</span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">{customerName}</p>
+                <p className="text-xs text-amber-300 font-mono">{customerPhone}</p>
+              </div>
+              <button
+                onClick={() => setStep(0)}
+                className="ml-auto text-[10px] text-slate-400 hover:text-white transition"
+              >
+                Alterar
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-bold text-slate-400 mb-1.5 block">Nome *</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                placeholder="Seu nome"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
-              />
-            </div>
+
             <div>
               <label className="text-xs font-bold text-slate-400 mb-1.5 block">E-mail (opcional)</label>
               <input
@@ -491,8 +558,7 @@ export const BookingWizard: React.FC = () => {
             </button>
             <button
               onClick={() => { setSubmitError(''); setStep(6); }}
-              disabled={!customerName || !customerPhone}
-              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold flex items-center gap-2 transition active:scale-95"
+              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center gap-2 transition active:scale-95"
             >
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
@@ -540,7 +606,6 @@ export const BookingWizard: React.FC = () => {
             })}
           </div>
 
-          {/* Resumo */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Resumo</h3>
             <div className="space-y-2 text-sm">

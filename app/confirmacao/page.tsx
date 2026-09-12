@@ -48,7 +48,7 @@ function ConfirmacaoContent() {
   const PaymentIcon = paymentIcons[payment] || CreditCard;
 
   const whatsappMessage = encodeURIComponent(
-    `Fala! 💈\n\nAgendei horário na *Barbearia Mamuty*:\n\n✂️ *${service}*\n💈 ${barber}\n📅 ${formattedDate} às ${time}\n💰 R$ ${price}\n💳 ${paymentLabels[payment] || payment.toUpperCase()}\n\n*~Mamuty barbearia estilo forte.*`
+    `Fala!\n\nAgendei horario na *Barbearia Mamuty*:\n\n*${service}*\n${barber}\n${formattedDate} as ${time}\nR$ ${price}\n${paymentLabels[payment] || payment.toUpperCase()}\n\n*Mamuty barbearia estilo forte.*`
   );
 
   return (

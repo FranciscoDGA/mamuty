@@ -35,66 +35,7 @@ interface LocalTransaction {
   barberName?: string;
 }
 
-const INITIAL_TRANSACTIONS: LocalTransaction[] = [
-  {
-    id: 'tx-1',
-    type: 'receita',
-    category: 'Corte & Barba',
-    description: 'Atendimento Lucas Silva - Corte Degradê + Barboterapia',
-    amount: 85.00,
-    date: new Date().toISOString().split('T')[0],
-    paymentMethod: 'pix',
-    barberName: 'Carlos "Mão de Ouro"'
-  },
-  {
-    id: 'tx-2',
-    type: 'receita',
-    category: 'Venda de Produto',
-    description: '2x Pomada Matte Modeladora Efeito Seco',
-    amount: 90.00,
-    date: new Date().toISOString().split('T')[0],
-    paymentMethod: 'cartao',
-    barberName: 'Rafael Barber'
-  },
-  {
-    id: 'tx-3',
-    type: 'despesa',
-    category: 'Insumos & Descartáveis',
-    description: 'Caixa de lâminas descartáveis + golas higiênicas',
-    amount: 120.00,
-    date: new Date().toISOString().split('T')[0],
-    paymentMethod: 'pix'
-  },
-  {
-    id: 'tx-4',
-    type: 'receita',
-    category: 'Combo VIP',
-    description: 'Combo Completo Cabelo, Barba e Sobrancelha',
-    amount: 95.00,
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    paymentMethod: 'dinheiro',
-    barberName: 'Carlos "Mão de Ouro"'
-  },
-  {
-    id: 'tx-5',
-    type: 'despesa',
-    category: 'Café & Conforto',
-    description: 'Cápsulas de café expresso e cervejas artesanais cortesia',
-    amount: 145.00,
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    paymentMethod: 'cartao'
-  },
-  {
-    id: 'tx-6',
-    type: 'receita',
-    category: 'Cabelo',
-    description: 'Corte Infantil Estilizado',
-    amount: 45.00,
-    date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-    paymentMethod: 'pix',
-    barberName: 'Matheus Navalha'
-  }
-];
+const INITIAL_TRANSACTIONS: LocalTransaction[] = [];
 
 export default function FinanceiroPage() {
   const { appointments, barbers } = useApp();
@@ -362,6 +303,20 @@ export default function FinanceiroPage() {
             <option value="despesa">Apenas Despesas (-)</option>
           </select>
         </div>
+      </div>
+
+      {/* Filter Status */}
+      <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
+        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+        <span>
+          Exibindo: <strong className="text-slate-300">
+            {filterType === 'all' ? 'Todas' : filterType === 'receita' ? 'Receitas' : 'Despesas'}
+          </strong>
+          {dateFilter === 'today' && ' — Hoje'}
+          {dateFilter === 'month' && ' — Mês Atual'}
+          {dateFilter === 'all' && ' — Histórico Completo'}
+          {' • '}<strong className="text-amber-400">{filteredTransactions.length}</strong> registro(s)
+        </span>
       </div>
 
       {/* 4 Main KPI Cards */}
@@ -689,9 +644,14 @@ export default function FinanceiroPage() {
           </table>
 
           {filteredTransactions.length === 0 && (
-            <div className="py-12 text-center text-slate-500 space-y-2">
+            <div className="py-12 text-center text-slate-500 space-y-3">
               <DollarSign className="w-10 h-10 mx-auto text-slate-700" />
-              <p className="text-sm">Nenhum lançamento financeiro encontrado para os filtros selecionados.</p>
+              <p className="text-sm">Nenhum lançamento encontrado para este filtro.</p>
+              <p className="text-xs text-slate-600">
+                {dateFilter === 'today' && 'Nenhum lançamento registrado hoje. Clique em "Lançar no Caixa" para adicionar.'}
+                {dateFilter === 'month' && 'Nenhum lançamento neste mês. Clique em "Lançar no Caixa" para adicionar.'}
+                {dateFilter === 'all' && 'Nenhum lançamento registrado ainda. Comece clicando em "Lançar no Caixa".'}
+              </p>
             </div>
           )}
         </div>

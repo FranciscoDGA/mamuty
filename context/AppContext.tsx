@@ -115,33 +115,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.warn('Supabase barbers unavailable or empty, using fallback:', bErr);
         setBarbers(INITIAL_BARBERS);
       } else {
-        setBarbers([
-          ...bData.map(b => ({
+        const DISPLAY_NAMES: Record<string, string> = {
+        'mamuty.barber': 'Hemerson',
+        'Doglas': 'Douglas',
+        'Douglas': 'Douglas',
+      };
+      const PHOTO_MAP: Record<string, string> = {
+        'mamuty.barber': '/barber-hemerson.jpg',
+        'Doglas': '/barber-douglas.jpg',
+        'Douglas': '/barber-douglas.jpg',
+      };
+      const DESC_MAP: Record<string, string> = {
+        'mamuty.barber': 'Fundador & Barbeiro Chefe',
+        'Doglas': 'Especialista em Degradê & Barba',
+        'Douglas': 'Especialista em Degradê & Barba',
+      };
+
+      setBarbers(
+          bData.map(b => ({
             id: b.id,
-            name: b.name,
-            role: b.description || 'Barbeiro Especialista',
-            avatarUrl: b.photo_url || (b.name === 'mamuty.barber' ? '/barber-hemerson.jpg' : '/barber-douglas.jpg'),
+            name: DISPLAY_NAMES[b.name] || b.name,
+            role: DESC_MAP[b.name] || b.description || 'Barbeiro Especialista',
+            avatarUrl: PHOTO_MAP[b.name] || b.photo_url || '/logo.png',
             rating: 5.0,
-            reviewsCount: b.name === 'mamuty.barber' ? 148 : 112,
+            reviewsCount: (DISPLAY_NAMES[b.name] || b.name) === 'Hemerson' ? 148 : 112,
             specialties: b.specialty ? [b.specialty] : ['Degradê', 'Barba', 'Corte Tradicional'],
             phone: '(94) 98443-9065',
-            bio: b.description || '',
+            bio: DESC_MAP[b.name] || b.description || '',
             availableDays: [1,2,3,4,5,6],
             active: b.active !== false,
-          })),
-          {
-            id: 'any',
-            name: 'Qualquer profissional',
-            role: 'Disponível',
-            avatarUrl: '/barber-douglas.jpg',
-            rating: 5.0,
-            reviewsCount: 0,
-            specialties: [],
-            phone: '',
-            bio: '',
-            availableDays: [1,2,3,4,5,6]
-          }
-        ]);
+          }))
+      );
       }
       
       // 3. Fetch Appointments with relational data

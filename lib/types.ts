@@ -9,6 +9,7 @@ export interface Service {
   durationMinutes: number;
   pointsReward: number;
   popular?: boolean;
+  active?: boolean;
 }
 
 export interface Barber {

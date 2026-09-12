@@ -5,7 +5,7 @@
 - **Tela de Login & Cadastro**:
   - Aba de **Login**: E-mail ou WhatsApp e Senha (com botão de visualização de senha).
   - Aba de **Cadastro**: Nome do Dono, E-mail, WhatsApp, Criação e Confirmação de Senha.
-  - **Acesso Demo Rápido**: Botão de 1 toque para testes instantâneos (`dono@mamuty.com`).
+  - **Acesso Seguro**: Apenas credenciais reais do Supabase Auth.
   - **Persistência de Sessão**: Suporte completo via [AuthContext.tsx](file:///C:/Users/User/antigravity/Mamuty---Barbearia-&-Salão-Masculino/context/AuthContext.tsx) com sincronização no Supabase e armazenamento resiliente.
 - **Layout Administrativo 100% Mobile**:
   - **Barra Superior Mobile**: Nome do dono conectado, status e botão de Logout rápido com confirmação.

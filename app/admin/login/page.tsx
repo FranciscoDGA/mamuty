@@ -12,7 +12,6 @@ import {
   KeyRound, 
   ArrowLeft, 
   Scissors, 
-  Sparkles, 
   ShieldCheck, 
   Eye, 
   EyeOff, 
@@ -129,16 +128,6 @@ export default function AdminLoginPage() {
       }, 800);
     } else {
       setErrorMessage(res.error || 'Erro ao realizar cadastro.');
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    setErrorMessage('');
-    const res = await login('dono@mamuty.com', 'mamuty123');
-    setIsLoading(false);
-    if (res.success) {
-      router.push('/admin');
     }
   };
 
@@ -285,18 +274,6 @@ export default function AdminLoginPage() {
               )}
             </button>
 
-            {/* Quick Demo Access button */}
-            <div className="pt-2 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={handleDemoLogin}
-                disabled={isLoading}
-                className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs transition flex items-center justify-center gap-2 active:scale-95"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Entrar como Hemerson Barber (1 Clique)</span>
-              </button>
-            </div>
           </form>
         )}
 

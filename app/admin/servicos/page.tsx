@@ -88,7 +88,7 @@ export default function ServicosPage() {
   const toggleStatus = async (item: Service) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
     if (isUUID) {
-      try { await supabase.from('services').update({ active: !item.popular }).eq('id', item.id); } catch (e) { console.warn(e); }
+      try { await supabase.from('services').update({ active: !item.active }).eq('id', item.id); } catch (e) { console.warn(e); }
     }
     await refreshData();
   };
