@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { BookingWizard } from '@/components/booking/BookingWizard';
+import ShareBookingLink from '@/components/ShareBookingLink';
 import { Appointment } from '@/lib/types';
 import {
   ChevronLeft,
@@ -15,6 +16,8 @@ import {
   MapPin,
   Clock,
   Phone,
+  Share2,
+  QrCode,
 } from 'lucide-react';
 
 export default function AgendarPage() {
@@ -138,6 +141,11 @@ export default function AgendarPage() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 pb-8">
         <BookingWizard />
+        
+        {/* Share Section */}
+        <div className="mt-8">
+          <ShareBookingLink />
+        </div>
       </main>
 
       {/* Footer Simples */}
