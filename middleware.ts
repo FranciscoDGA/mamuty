@@ -5,11 +5,11 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    // Verificar qualquer cookie de sessão do Supabase (formato sb-*)
+    // Verificar qualquer cookie do Supabase (formato sb-*)
     const cookies = request.cookies.getAll();
-    const hasSupabaseSession = cookies.some(c => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
+    const hasSession = cookies.some(c => c.name.startsWith('sb-'));
 
-    if (!hasSupabaseSession) {
+    if (!hasSession) {
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirected', 'true');
       return NextResponse.redirect(loginUrl);
