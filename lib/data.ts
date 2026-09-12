@@ -13,6 +13,7 @@ export const INITIAL_SALON_CONFIG: SalonConfig = {
   instagram: '@mamutybarbearia',
   openingHours: 'Segunda a Sábado: Somente com hora marcada',
   loyaltyStampsGoal: 10,
+  toleranceMinutes: 15,
 };
 
 export const INITIAL_SERVICES: Service[] = [

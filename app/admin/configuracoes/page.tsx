@@ -13,6 +13,7 @@ interface ShopSettings {
   lunchStart: string;
   lunchEnd: string;
   intervalMinutes: string;
+  toleranceMinutes: string;
   aiTone: 'relaxed' | 'professional' | 'energetic';
   welcomeMessage: string;
   autoAntiNoShow: boolean;
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS: ShopSettings = {
   lunchStart: '12:00',
   lunchEnd: '14:00',
   intervalMinutes: '30',
+  toleranceMinutes: '15',
   aiTone: 'professional',
   welcomeMessage: 'Fala, campeão! Seja muito bem-vindo à Barbearia Mamuty. Em que posso te ajudar hoje? Marcar corte, ver preços ou tirar dúvidas?',
   autoAntiNoShow: true,
@@ -131,6 +133,43 @@ export default function ConfiguracoesPage() {
           <div className="grid grid-cols-2 gap-3">
             <Input label="Dias de Funcionamento" value={settings.workDays} onChange={v => s('workDays', v)} />
             <Select label="Intervalo de Encaixes" value={settings.intervalMinutes} onChange={v => s('intervalMinutes', v)} options={[{ v: '15', l: '15 min' }, { v: '30', l: '30 min' }, { v: '45', l: '45 min' }, { v: '60', l: '60 min' }]} />
+          </div>
+        </Section>
+
+        {/* Tolerância */}
+        <Section icon={Clock} title="Tolerância de Atraso">
+          <p className="text-xs text-slate-400 mb-3">
+            Tempo máximo que o cliente pode chegar após o horário marcado sem ser considerado atrasado.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label="Tolerância (minutos)"
+              value={settings.toleranceMinutes}
+              onChange={v => s('toleranceMinutes', v)}
+              options={[
+                { v: '5', l: '5 minutos' },
+                { v: '10', l: '10 minutos' },
+                { v: '15', l: '15 minutos (padrão)' },
+                { v: '20', l: '20 minutos' },
+                { v: '30', l: '30 minutos' },
+                { v: '45', l: '45 minutos' },
+              ]}
+            />
+            <div className="flex items-end">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 w-full">
+                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Exemplo</p>
+                <p className="text-xs text-slate-300">
+                  Horário: <span className="text-amber-400 font-bold">14:00</span> | 
+                  Chegada: <span className="text-emerald-400 font-bold">14:08</span> = 
+                  <span className="text-emerald-400 font-bold"> No tempo</span>
+                </p>
+                <p className="text-xs text-slate-300 mt-1">
+                  Horário: <span className="text-amber-400 font-bold">14:00</span> | 
+                  Chegada: <span className="text-rose-400 font-bold">14:25</span> = 
+                  <span className="text-rose-400 font-bold"> Atraso</span>
+                </p>
+              </div>
+            </div>
           </div>
         </Section>
 

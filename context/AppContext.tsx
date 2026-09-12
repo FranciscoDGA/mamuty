@@ -34,6 +34,7 @@ interface AppContextType {
   }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<void>;
   updateAppointment: (id: string, updates: Partial<Appointment>) => Promise<Appointment | null>;
+  markArrival: (id: string) => Promise<void>;
   createCustomer: (name: string, phone: string, extra?: Partial<Customer>) => Promise<any>;
   deleteCustomer: (id: string) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
@@ -610,6 +611,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return merged;
   };
 
+  /**
+   * Registra a chegada do cliente — calcula atraso com base no horário agendado e tolerância.
+   */
+  const markArrival = async (id: string) => {
+    const apt = appointments.find(a => a.id === id);
+    if (!apt) return;
+
+    const now = new Date();
+    const arrivalHH = now.getHours().toString().padStart(2, '0');
+    const arrivalMM = now.getMinutes().toString().padStart(2, '0');
+    const arrivalTime = `${arrivalHH}:${arrivalMM}`;
+
+    // Calcular atraso em minutos
+    const schedParts = apt.time.split(':').map(Number);
+    const schedMinutes = schedParts[0] * 60 + schedParts[1];
+    const arrMinutes = now.getHours() * 60 + now.getMinutes();
+    const delayMinutes = arrMinutes - schedMinutes;
+
+    // Persistir no Supabase
+    try {
+      if (isUUID(id)) {
+        await supabase.from('appointments').update({
+          arrival_time: arrivalTime + ':00',
+          delay_minutes: delayMinutes,
+          status: 'aguardando',
+        }).eq('id', id);
+      }
+    } catch (err) {
+      console.warn('Erro ao registrar chegada no Supabase:', err);
+    }
+
+    // Atualizar estado local
+    setAppointments(prev => prev.map(a => a.id === id ? {
+      ...a,
+      arrivalTime,
+      delayMinutes,
+      status: 'aguardando',
+    } : a));
+
+    await fetchData();
+  };
+
   const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
   const deleteCustomer = async (id: string) => {
@@ -772,6 +815,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createAppointment,
         updateAppointmentStatus,
         updateAppointment,
+        markArrival,
         createCustomer,
         deleteCustomer,
         deleteService,

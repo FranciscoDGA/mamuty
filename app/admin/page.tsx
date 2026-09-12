@@ -37,8 +37,10 @@ export default function AdminPage() {
     appointments, 
     barbers, 
     services, 
+    salonConfig,
     updateAppointmentStatus, 
     updateAppointment,
+    markArrival,
     createAppointment,
     deleteAppointment,
     addLoyaltyStamp,
@@ -390,6 +392,26 @@ export default function AdminPage() {
                             <span className="text-[10px] text-slate-500">&bull;</span>
                             <span className="text-[10px] text-slate-400">{apt.barberName}</span>
                             <span className="text-[10px] text-emerald-400 font-bold">R$ {apt.totalPrice}</span>
+                            {apt.delayMinutes !== undefined && apt.delayMinutes !== null && apt.status !== 'completed' && apt.status !== 'cancelled' && (
+                              <>
+                                {apt.delayMinutes > salonConfig.toleranceMinutes ? (
+                                  <span className="text-[9px] bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded font-bold">
+                                    Atraso {apt.delayMinutes}min
+                                  </span>
+                                ) : apt.delayMinutes > 0 ? (
+                                  <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">
+                                    +{apt.delayMinutes}min
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold">
+                                    No horário
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {apt.arrivalTime && (
+                              <span className="text-[9px] text-slate-600">chegou {apt.arrivalTime}</span>
+                            )}
                             {apt.status === 'aguardando' && (
                               <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">Aguardando</span>
                             )}
@@ -412,7 +434,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-1 shrink-0">
                             {apt.status === 'confirmed' && (
                               <button
-                                onClick={() => updateAppointmentStatus(apt.id, 'aguardando')}
+                                onClick={() => markArrival(apt.id)}
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition"
                                 title="Cliente chegou"
                               >

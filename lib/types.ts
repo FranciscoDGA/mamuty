@@ -52,6 +52,8 @@ export interface Appointment {
   source?: string;
   pixPayload?: string;
   ratingSubmitted?: boolean;
+  arrivalTime?: string; // HH:mm - horário de chegada do cliente
+  delayMinutes?: number; // minutos de atraso (negativo = adiantado)
 }
 
 export interface Review {
@@ -133,6 +135,7 @@ export interface SalonConfig {
   instagram: string;
   openingHours: string;
   loyaltyStampsGoal: number;
+  toleranceMinutes: number;
 }
 
 export interface BarberSchedule {
