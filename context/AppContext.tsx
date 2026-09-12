@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appointment, Barber, Customer, Service, SalonConfig, FinancialTransaction, PaymentMethod, BarberSchedule, BlockedSlot, ClosedDay } from '@/lib/types';
+import { Appointment, Barber, Customer, Service, SalonConfig, FinancialTransaction, PaymentMethod, AppointmentStatus, BarberSchedule, BlockedSlot, ClosedDay } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import {
   INITIAL_SALON_CONFIG,
@@ -32,7 +32,8 @@ interface AppContextType {
     source?: string;
     paymentMethod?: PaymentMethod;
   }) => Promise<Appointment>;
-  updateAppointmentStatus: (id: string, status: 'confirmed' | 'completed' | 'cancelled') => Promise<void>;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<void>;
+  updateAppointment: (id: string, updates: Partial<Appointment>) => Promise<Appointment | null>;
   createCustomer: (name: string, phone: string, extra?: Partial<Customer>) => Promise<any>;
   deleteCustomer: (id: string) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
@@ -524,7 +525,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
    * Atualização de status (confirmed, completed, cancelled)
    * Ao cancelar, libera o horário imediatamente mantendo o registro no banco.
    */
-  const updateAppointmentStatus = async (id: string, status: 'confirmed' | 'completed' | 'cancelled') => {
+  const updateAppointmentStatus = async (id: string, status: AppointmentStatus) => {
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
 
     try {
@@ -535,6 +536,78 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Recalcular visitas do cliente se foi concluído
     await fetchData();
+  };
+
+  /**
+   * Atualização completa de agendamento (reagendamento) — data, hora, barbeiro, serviço.
+   * Inclui verificação de conflito contra o Supabase.
+   */
+  const updateAppointment = async (id: string, updates: Partial<Appointment>): Promise<Appointment | null> => {
+    const apt = appointments.find(a => a.id === id);
+    if (!apt) return null;
+
+    const newDate = updates.date || apt.date;
+    const newTime = updates.time || apt.time;
+    const newBarberId = updates.barberId || apt.barberId;
+    const duration = updates.totalDurationMinutes || apt.totalDurationMinutes;
+
+    // Verificar conflito se mudou data, hora ou barbeiro
+    if (updates.date || updates.time || updates.barberId) {
+      try {
+        const { data: existingSlots } = await supabase
+          .from('appointments')
+          .select('id, appointment_time, duration_minutes, status')
+          .eq('barber_id', newBarberId)
+          .eq('appointment_date', newDate)
+          .not('status', 'eq', 'cancelled');
+
+        if (existingSlots && existingSlots.length > 0) {
+          const reqStart = parseInt(newTime.split(':')[0]) * 60 + parseInt(newTime.split(':')[1]);
+          const reqEnd = reqStart + duration;
+
+          for (const ex of existingSlots) {
+            if (ex.id === id) continue;
+            const exTime = ex.appointment_time ? ex.appointment_time.substring(0, 5) : '10:00';
+            const exStart = parseInt(exTime.split(':')[0]) * 60 + parseInt(exTime.split(':')[1]);
+            const exEnd = exStart + (ex.duration_minutes || 40);
+
+            if (reqStart < exEnd && reqEnd > exStart) {
+              throw new Error(`Conflito! O horário das ${newTime} já está reservado para ${apt.barberName} neste dia.`);
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.message && err.message.includes('Conflito')) {
+          throw err;
+        }
+        console.warn('Nota de verificação de concorrência:', err);
+      }
+    }
+
+    // Montar payload para Supabase
+    const dbPayload: any = {};
+    if (updates.date) dbPayload.appointment_date = updates.date;
+    if (updates.time) dbPayload.appointment_time = (updates.time.length === 5 ? updates.time + ':00' : updates.time);
+    if (updates.barberId) dbPayload.barber_id = updates.barberId;
+    if (updates.status) dbPayload.status = updates.status;
+    if (updates.totalPrice !== undefined) dbPayload.price = updates.totalPrice;
+    if (updates.notes !== undefined) dbPayload.notes = updates.notes;
+
+    // Persistir no Supabase
+    try {
+      if (isUUID(id) && Object.keys(dbPayload).length > 0) {
+        await supabase.from('appointments').update(dbPayload).eq('id', id);
+      }
+    } catch (err) {
+      console.warn('Erro ao atualizar agendamento no Supabase:', err);
+    }
+
+    // Atualizar estado local
+    const merged = { ...apt, ...updates };
+    setAppointments(prev => prev.map(a => a.id === id ? merged : a));
+    await fetchData();
+
+    return merged;
   };
 
   const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -698,6 +771,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         buscarClientePorWhatsapp,
         createAppointment,
         updateAppointmentStatus,
+        updateAppointment,
         createCustomer,
         deleteCustomer,
         deleteService,

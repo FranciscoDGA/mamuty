@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { AppointmentStatus } from '@/lib/types';
 import { 
   CheckCircle, 
   XCircle, 
@@ -27,6 +28,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  Edit3,
 } from 'lucide-react';
 import DashboardCharts from '@/components/admin/DashboardCharts';
 
@@ -36,6 +38,7 @@ export default function AdminPage() {
     barbers, 
     services, 
     updateAppointmentStatus, 
+    updateAppointment,
     createAppointment,
     deleteAppointment,
     addLoyaltyStamp,
@@ -57,6 +60,13 @@ export default function AdminPage() {
   const [manualDate, setManualDate] = useState(selectedDate);
   const [manualTime, setManualTime] = useState('10:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reschedule modal
+  const [rescheduleApt, setRescheduleApt] = useState<any>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleBarberId, setRescheduleBarberId] = useState('');
+  const [rescheduleServiceId, setRescheduleServiceId] = useState('');
 
   const activeServices = useMemo(() => services.filter(s => s.id), [services]);
   const activeBarbers = useMemo(() => barbers.filter(b => b.id !== 'any'), [barbers]);
@@ -125,10 +135,12 @@ export default function AdminPage() {
 
   const stats = useMemo(() => {
     const total = todaysAppointments.length;
+    const aguardando = todaysAppointments.filter(a => a.status === 'aguardando').length;
     const pending = todaysAppointments.filter(a => a.status === 'confirmed').length;
     const completed = todaysAppointments.filter(a => a.status === 'completed').length;
     const cancelled = todaysAppointments.filter(a => a.status === 'cancelled').length;
-    return { total, pending, completed, cancelled };
+    const noShow = todaysAppointments.filter(a => a.status === 'nao_compareceu').length;
+    return { total, aguardando, pending, completed, cancelled, noShow };
   }, [todaysAppointments]);
 
   const handleCancel = async (id: string) => {
@@ -256,19 +268,19 @@ export default function AdminPage() {
           <p className="text-[11px] text-slate-400">Agendamentos</p>
         </div>
         <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Pendentes</p>
-          <p className="text-3xl font-black text-amber-400 mt-1">{stats.pending}</p>
-          <p className="text-[11px] text-slate-400">Confirmados</p>
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Aguardando</p>
+          <p className="text-3xl font-black text-amber-400 mt-1">{stats.aguardando}</p>
+          <p className="text-[11px] text-slate-400">Na fila</p>
+        </div>
+        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Confirmados</p>
+          <p className="text-3xl font-black text-sky-400 mt-1">{stats.pending}</p>
+          <p className="text-[11px] text-slate-400">Pendentes</p>
         </div>
         <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
           <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Concluídos</p>
           <p className="text-3xl font-black text-emerald-400 mt-1">{stats.completed}</p>
           <p className="text-[11px] text-slate-400">Atendimentos</p>
-        </div>
-        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Cancelados</p>
-          <p className="text-3xl font-black text-rose-400 mt-1">{stats.cancelled}</p>
-          <p className="text-[11px] text-slate-400">Cancelamentos</p>
         </div>
       </div>
 
@@ -378,8 +390,14 @@ export default function AdminPage() {
                             <span className="text-[10px] text-slate-500">&bull;</span>
                             <span className="text-[10px] text-slate-400">{apt.barberName}</span>
                             <span className="text-[10px] text-emerald-400 font-bold">R$ {apt.totalPrice}</span>
+                            {apt.status === 'aguardando' && (
+                              <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">Aguardando</span>
+                            )}
                             {apt.status === 'confirmed' && (
                               <span className="text-[9px] bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded font-bold">Confirmado</span>
+                            )}
+                            {apt.status === 'em_andamento' && (
+                              <span className="text-[9px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded font-bold">Em andamento</span>
                             )}
                             {apt.status === 'completed' && (
                               <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold">Concluído</span>
@@ -387,44 +405,80 @@ export default function AdminPage() {
                             {apt.status === 'cancelled' && (
                               <span className="text-[9px] bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded font-bold">Cancelado</span>
                             )}
+                            {apt.status === 'nao_compareceu' && (
+                              <span className="text-[9px] bg-slate-500/20 text-slate-400 px-1.5 py-0.5 rounded font-bold">Não compareceu</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            {apt.status !== 'confirmed' && apt.status !== 'completed' && (
+                            {apt.status === 'confirmed' && (
                               <button
-                                onClick={() => updateAppointmentStatus(apt.id, 'confirmed')}
-                                className="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-bold transition"
-                                title="Confirmar"
+                                onClick={() => updateAppointmentStatus(apt.id, 'aguardando')}
+                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition"
+                                title="Cliente chegou"
                               >
-                                <CheckCircle className="w-3 h-3 inline mr-1" />OK
+                                <Clock className="w-3 h-3 inline mr-1" />Chegou
                               </button>
                             )}
-                            {apt.status === 'confirmed' && (
-                              <>
-                                <button
-                                  onClick={() => handleComplete(apt.id)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition"
-                                  title="Concluir"
-                                >
-                                  <Check className="w-3 h-3 inline mr-1" />Feito
-                                </button>
-                                <a
-                                  href={`https://wa.me/55${apt.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Fala ${apt.customerName}! Seu horário hoje às ${apt.time} está confirmado. Responda 1 para confirmar.`)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2.5 py-1 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-bold transition"
-                                  title="Lembrete WhatsApp"
-                                >
-                                  <MessageCircle className="w-3 h-3 inline" />
-                                </a>
-                              </>
+                            {(apt.status === 'aguardando' || apt.status === 'confirmed') && (
+                              <button
+                                onClick={() => updateAppointmentStatus(apt.id, 'em_andamento')}
+                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[11px] font-bold transition"
+                                title="Iniciar atendimento"
+                              >
+                                <Scissors className="w-3 h-3 inline mr-1" />Iniciar
+                              </button>
                             )}
-                            {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                            {apt.status === 'em_andamento' && (
+                              <button
+                                onClick={() => handleComplete(apt.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition"
+                                title="Concluir"
+                              >
+                                <Check className="w-3 h-3 inline mr-1" />Feito
+                              </button>
+                            )}
+                            {apt.status !== 'completed' && apt.status !== 'cancelled' && apt.status !== 'nao_compareceu' && (
+                              <button
+                                onClick={() => {
+                                  setRescheduleApt(apt);
+                                  setRescheduleDate(apt.date);
+                                  setRescheduleTime(apt.time);
+                                  setRescheduleBarberId(apt.barberId);
+                                  setRescheduleServiceId(apt.serviceIds?.[0] || '');
+                                }}
+                                className="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 rounded-lg text-[11px] font-bold transition"
+                                title="Reagendar"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                            )}
+                            {apt.status !== 'completed' && apt.status !== 'cancelled' && apt.status !== 'nao_compareceu' && apt.status !== 'aguardando' && apt.status !== 'em_andamento' && (
+                              <a
+                                href={`https://wa.me/55${apt.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Fala ${apt.customerName}! Seu horário hoje às ${apt.time} está confirmado. Responda 1 para confirmar.`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1 bg-emerald-700/40 hover:bg-emerald-600/60 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-bold transition"
+                                title="Lembrete WhatsApp"
+                              >
+                                <MessageCircle className="w-3 h-3 inline" />
+                              </a>
+                            )}
+                            {apt.status !== 'completed' && apt.status !== 'cancelled' && apt.status !== 'nao_compareceu' && (
                               <button
                                 onClick={() => handleCancel(apt.id)}
                                 className="px-2 py-1 bg-slate-900 border border-rose-900/40 text-rose-400 hover:bg-rose-950/40 rounded-lg text-[11px] font-bold transition"
                                 title="Cancelar"
                               >
                                 <XCircle className="w-3 h-3" />
+                              </button>
+                            )}
+                            {apt.status === 'confirmed' && (
+                              <button
+                                onClick={() => updateAppointmentStatus(apt.id, 'nao_compareceu')}
+                                className="px-2 py-1 bg-slate-900 border border-slate-600 text-slate-500 hover:bg-slate-800 rounded-lg text-[11px] font-bold transition"
+                                title="Não compareceu"
+                              >
+                                ?
                               </button>
                             )}
                             <button
@@ -518,6 +572,77 @@ export default function AdminPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleApt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-white">Reagendar — {rescheduleApt.customerName}</h3>
+              <button onClick={() => setRescheduleApt(null)} className="text-slate-400 hover:text-white p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">Data</label>
+                <input type="date" required value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-amber-500 outline-none" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">Horário</label>
+                <select value={rescheduleTime} onChange={(e) => setRescheduleTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-amber-500 outline-none">
+                  {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">Profissional</label>
+                  <select value={rescheduleBarberId} onChange={(e) => setRescheduleBarberId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-amber-500 outline-none">
+                    {activeBarbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">Serviço</label>
+                  <select value={rescheduleServiceId} onChange={(e) => setRescheduleServiceId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-amber-500 outline-none">
+                    {activeServices.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex gap-2">
+              <button onClick={() => setRescheduleApt(null)} className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition">
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  const s = services.find(srv => srv.id === rescheduleServiceId);
+                  const b = barbers.find(bar => bar.id === rescheduleBarberId);
+                  try {
+                    await updateAppointment(rescheduleApt.id, {
+                      date: rescheduleDate,
+                      time: rescheduleTime,
+                      barberId: rescheduleBarberId,
+                      barberName: b?.name || rescheduleApt.barberName,
+                      serviceIds: rescheduleServiceId ? [rescheduleServiceId] : rescheduleApt.serviceIds,
+                      serviceNames: s ? [s.name] : rescheduleApt.serviceNames,
+                      totalPrice: s?.price || rescheduleApt.totalPrice,
+                      totalDurationMinutes: s?.durationMinutes || rescheduleApt.totalDurationMinutes,
+                    });
+                    setRescheduleApt(null);
+                  } catch (err: any) {
+                    alert(err.message || 'Erro ao reagendar.');
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition"
+              >
+                Confirmar Reagendamento
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

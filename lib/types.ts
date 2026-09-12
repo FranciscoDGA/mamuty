@@ -28,7 +28,7 @@ export interface Barber {
 
 export type PaymentMethod = 'pix' | 'dinheiro' | 'debito' | 'credito' | 'cartao' | 'presencial';
 export type PaymentStatus = 'pendente' | 'pago' | 'no_local';
-export type AppointmentStatus = 'confirmed' | 'em_andamento' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'aguardando' | 'confirmed' | 'em_andamento' | 'completed' | 'cancelled' | 'nao_compareceu';
 
 export interface Appointment {
   id: string;
