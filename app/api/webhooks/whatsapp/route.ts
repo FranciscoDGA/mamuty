@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
             };
             const automationJobs = processarNovoAgendamento(aptForAutomation, []);
             if (automationJobs.length > 0) {
-              adicionarJobs(automationJobs);
+              await adicionarJobs(automationJobs);
             }
           }
         }

@@ -1,66 +1,162 @@
 import { AutomationJob, AutomationType, AutomationStatus } from './automation';
+import { supabase } from '@/lib/supabase';
 
 // ============================================
-// SPRINT 6 — FILA DE AUTOMAÇÕES
+// SPRINT 6 — FILA DE AUTOMAÇÕES (Supabase)
 // ============================================
 
-// Armazenamento em memória (futuramente Supabase)
+// Cache local (fallback se Supabase offline)
 let automationQueue: AutomationJob[] = [];
-let jobIdCounter = 0;
+let loaded = false;
 
 // -------------------------------------------
-// 1. OPERAÇÕES DA FILA
+// 1. INICIALIZAÇÃO
 // -------------------------------------------
 
-export function adicionarJob(job: Omit<AutomationJob, 'id'>): AutomationJob {
-  jobIdCounter++;
-  const novoJob: AutomationJob = {
-    ...job,
-    id: `job-${jobIdCounter}-${Date.now()}`
+export async function carregarFila(): Promise<void> {
+  const { data, error } = await supabase
+    .from('automation_jobs')
+    .select('*')
+    .order('agendado_para', { ascending: true });
+
+  if (error) {
+    console.error('[AutomationQueue] Erro ao carregar fila:', error.message);
+    return;
+  }
+
+  automationQueue = (data || []).map(mapRowToJob);
+  loaded = true;
+}
+
+function mapRowToJob(row: any): AutomationJob {
+  return {
+    id: row.id,
+    tipo: row.tipo,
+    clienteId: row.cliente_id,
+    clienteNome: row.cliente_nome,
+    clientePhone: row.cliente_phone,
+    agendamentoId: row.agendamento_id || undefined,
+    servicoInteresse: row.servico_interesse || undefined,
+    mensagem: row.mensagem,
+    status: row.status,
+    criadoEm: row.criado_em,
+    agendadoPara: row.agendado_para,
+    enviadoEm: row.enviado_em || undefined,
+    tentativas: row.tentativas,
+    maxTentativas: row.max_tentativas,
+    erro: row.erro || undefined,
+    meta: row.meta || undefined,
   };
+}
+
+function mapJobToRow(job: Omit<AutomationJob, 'id'>): Record<string, any> {
+  return {
+    tipo: job.tipo,
+    cliente_id: job.clienteId,
+    cliente_nome: job.clienteNome,
+    cliente_phone: job.clientePhone,
+    agendamento_id: job.agendamentoId || null,
+    servico_interesse: job.servicoInteresse || null,
+    mensagem: job.mensagem,
+    status: job.status,
+    criado_em: job.criadoEm,
+    agendado_para: job.agendadoPara,
+    enviado_em: job.enviadoEm || null,
+    tentativas: job.tentativas,
+    max_tentativas: job.maxTentativas,
+    erro: job.erro || null,
+    meta: job.meta || {},
+  };
+}
+
+// -------------------------------------------
+// 2. OPERAÇÕES DA FILA
+// -------------------------------------------
+
+export async function adicionarJob(job: Omit<AutomationJob, 'id'>): Promise<AutomationJob> {
+  const id = `job-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const novoJob: AutomationJob = { ...job, id };
+
+  const row = mapJobToRow(novoJob);
+  row.id = id;
+
+  const { error } = await supabase.from('automation_jobs').insert(row);
+
+  if (error) {
+    console.error('[AutomationQueue] Erro ao inserir job:', error.message);
+  }
+
   automationQueue.push(novoJob);
   return novoJob;
 }
 
-export function adicionarJobs(jobs: Omit<AutomationJob, 'id'>[]): AutomationJob[] {
-  return jobs.map(job => adicionarJob(job));
+export async function adicionarJobs(jobs: Omit<AutomationJob, 'id'>[]): Promise<AutomationJob[]> {
+  const results: AutomationJob[] = [];
+  for (const job of jobs) {
+    results.push(await adicionarJob(job));
+  }
+  return results;
 }
 
-export function obterJob(jobId: string): AutomationJob | undefined {
-  return automationQueue.find(j => j.id === jobId);
+export async function atualizarJob(jobId: string, updates: Partial<AutomationJob>): Promise<AutomationJob | null> {
+  const idx = automationQueue.findIndex(j => j.id === jobId);
+  if (idx === -1) return null;
+
+  automationQueue[idx] = { ...automationQueue[idx], ...updates };
+
+  const rowUpdate: Record<string, any> = {};
+  if (updates.status !== undefined) rowUpdate.status = updates.status;
+  if (updates.enviadoEm !== undefined) rowUpdate.enviado_em = updates.enviadoEm;
+  if (updates.tentativas !== undefined) rowUpdate.tentativas = updates.tentativas;
+  if (updates.erro !== undefined) rowUpdate.erro = updates.erro;
+
+  if (Object.keys(rowUpdate).length > 0) {
+    const { error } = await supabase.from('automation_jobs').update(rowUpdate).eq('id', jobId);
+    if (error) console.error('[AutomationQueue] Erro ao atualizar job:', error.message);
+  }
+
+  return automationQueue[idx];
 }
 
-export function atualizarJob(jobId: string, updates: Partial<AutomationJob>): AutomationJob | null {
-  const index = automationQueue.findIndex(j => j.id === jobId);
-  if (index === -1) return null;
-
-  automationQueue[index] = { ...automationQueue[index], ...updates };
-  return automationQueue[index];
-}
-
-export function cancelarJob(jobId: string): boolean {
+export async function cancelarJob(jobId: string): Promise<boolean> {
   const job = automationQueue.find(j => j.id === jobId);
   if (!job) return false;
 
   job.status = 'CANCELADO';
+
+  const { error } = await supabase.from('automation_jobs').update({ status: 'CANCELADO' }).eq('id', jobId);
+  if (error) console.error('[AutomationQueue] Erro ao cancelar job:', error.message);
+
   return true;
 }
 
-export function cancelarJobsCliente(clienteId: string, tipo?: AutomationType): number {
+export async function cancelarJobsCliente(clienteId: string, tipo?: AutomationType): Promise<number> {
   let cancelados = 0;
+  const ids: string[] = [];
+
   automationQueue.forEach(job => {
     if (job.clienteId === clienteId && job.status === 'PENDENTE') {
       if (!tipo || job.tipo === tipo) {
         job.status = 'CANCELADO';
+        ids.push(job.id);
         cancelados++;
       }
     }
   });
+
+  if (ids.length > 0) {
+    const { error } = await supabase
+      .from('automation_jobs')
+      .update({ status: 'CANCELADO' })
+      .in('id', ids);
+    if (error) console.error('[AutomationQueue] Erro ao cancelar jobs:', error.message);
+  }
+
   return cancelados;
 }
 
 // -------------------------------------------
-// 2. CONSULTAS
+// 3. CONSULTAS (síncronas, usam cache local)
 // -------------------------------------------
 
 export function obterJobsPendentes(): AutomationJob[] {
@@ -110,75 +206,76 @@ export function contarJobsPorStatus(): Record<AutomationStatus, number> {
 }
 
 // -------------------------------------------
-// 3. PROCESSAMENTO DA FILA
+// 4. PROCESSAMENTO DA FILA
 // -------------------------------------------
 
-export function processarFila(): {
+export async function processarFila(): Promise<{
   processados: number;
   enviados: number;
   falhas: number;
   jobs: AutomationJob[];
-} {
+}> {
   const jobsProntos = obterJobsProntos();
   let enviados = 0;
   let falhas = 0;
-
   const jobsProcessados: AutomationJob[] = [];
 
   for (const job of jobsProntos) {
-    // Simular envio (futuramente: integração com Z-API)
-    const sucesso = Math.random() > 0.05; // 95% de sucesso simulado
+    const sucesso = Math.random() > 0.05;
 
     if (sucesso) {
-      job.status = 'ENVIADO';
-      job.enviadoEm = new Date().toISOString();
-      job.tentativas++;
+      await atualizarJob(job.id, {
+        status: 'ENVIADO',
+        enviadoEm: new Date().toISOString(),
+        tentativas: job.tentativas + 1,
+      });
       enviados++;
     } else {
-      job.tentativas++;
-      if (job.tentativas >= job.maxTentativas) {
-        job.status = 'FALHA';
-        job.erro = 'Limite de tentativas atingido';
+      const novasTentativas = job.tentativas + 1;
+      if (novasTentativas >= job.maxTentativas) {
+        await atualizarJob(job.id, {
+          tentativas: novasTentativas,
+          status: 'FALHA',
+          erro: 'Limite de tentativas atingido',
+        });
+      } else {
+        await atualizarJob(job.id, { tentativas: novasTentativas });
       }
       falhas++;
     }
 
-    jobsProcessados.push(job);
+    jobsProcessados.push(automationQueue.find(j => j.id === job.id)!);
   }
 
-  return {
-    processados: jobsProntos.length,
-    enviados,
-    falhas,
-    jobs: jobsProcessados
-  };
+  return { processados: jobsProntos.length, enviados, falhas, jobs: jobsProcessados };
 }
 
 // -------------------------------------------
-// 4. LIMPEZA E MANUTENÇÃO
+// 5. LIMPEZA
 // -------------------------------------------
 
-export function limparJobsAntigos(diasRetencao: number = 30): number {
+export async function limparJobsAntigos(diasRetencao: number = 30): Promise<number> {
   const dataLimite = new Date();
   dataLimite.setDate(dataLimite.getDate() - diasRetencao);
 
-  const tamanhoAntes = automationQueue.length;
-  automationQueue = automationQueue.filter(job => {
-    if (job.status === 'CANCELADO' || job.status === 'FALHA') {
-      return new Date(job.criadoEm) > dataLimite;
-    }
-    return true;
-  });
+  const idsParaRemover = automationQueue
+    .filter(j =>
+      (j.status === 'CANCELADO' || j.status === 'FALHA') &&
+      new Date(j.criadoEm) < dataLimite
+    )
+    .map(j => j.id);
 
-  return tamanhoAntes - automationQueue.length;
-}
+  if (idsParaRemover.length > 0) {
+    const { error } = await supabase.from('automation_jobs').delete().in('id', idsParaRemover);
+    if (error) console.error('[AutomationQueue] Erro ao limpar jobs:', error.message);
+    automationQueue = automationQueue.filter(j => !idsParaRemover.includes(j.id));
+  }
 
-export function limparFila(): void {
-  automationQueue = [];
+  return idsParaRemover.length;
 }
 
 // -------------------------------------------
-// 5. ESTATÍSTICAS
+// 6. ESTATÍSTICAS
 // -------------------------------------------
 
 export function obterEstatisticas(): {
@@ -198,7 +295,7 @@ export function obterEstatisticas(): {
     RECUPERACAO_CLIENTE: 0,
     RECUPERACAO_OPORTUNIDADE: 0,
     PREENCHIMENTO_HORARIO: 0,
-    PROMOCAO: 0
+    PROMOCAO: 0,
   };
 
   automationQueue.forEach(job => {
@@ -209,7 +306,6 @@ export function obterEstatisticas(): {
   const total = automationQueue.length;
   const taxaSucesso = total > 0 ? Math.round((enviados.length / total) * 100) : 0;
 
-  // Tempo médio entre criação e envio
   let somaTempo = 0;
   let countTempo = 0;
   enviados.forEach(job => {
@@ -219,35 +315,11 @@ export function obterEstatisticas(): {
       countTempo++;
     }
   });
-  const tempoMedioResposta = countTempo > 0 ? Math.round(somaTempo / countTempo / 60000) : 0; // em minutos
+  const tempoMedioResposta = countTempo > 0 ? Math.round(somaTempo / countTempo / 60000) : 0;
 
-  return {
-    total,
-    porStatus,
-    porTipo,
-    taxaSucesso,
-    tempoMedioResposta
-  };
+  return { total, porStatus, porTipo, taxaSucesso, tempoMedioResposta };
 }
 
-// -------------------------------------------
-// 6. EXPORTAR PARA SUPABASE (futuro)
-// -------------------------------------------
-
-export function serializarFila(): AutomationJob[] {
-  return JSON.parse(JSON.stringify(automationQueue));
-}
-
-export function importarFila(dados: AutomationJob[]): void {
-  automationQueue = dados;
-  // Atualizar counter
-  const maxId = dados.reduce((max, job) => {
-    const match = job.id.match(/job-(\d+)-/);
-    if (match) {
-      const num = parseInt(match[1]);
-      return num > max ? num : max;
-    }
-    return max;
-  }, 0);
-  jobIdCounter = maxId;
+export function isLoaded(): boolean {
+  return loaded;
 }

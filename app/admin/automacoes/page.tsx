@@ -6,7 +6,9 @@ import {
   obterEstatisticas,
   obterJobsPendentes,
   obterJobsEnviados,
-  contarJobsPorStatus
+  contarJobsPorStatus,
+  carregarFila,
+  isLoaded
 } from '@/lib/ai/automationQueue';
 
 interface AutomationStats {
@@ -23,16 +25,21 @@ export default function AutomacoesPage() {
   const [pendingJobs, setPendingJobs] = useState<any[]>([]);
   const [sentJobs, setSentJobs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'regras' | 'fila' | 'metricas'>('regras');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
+    if (!isLoaded()) {
+      await carregarFila();
+    }
     const statsData = obterEstatisticas();
     setStats(statsData);
     setPendingJobs(obterJobsPendentes());
     setSentJobs(obterJobsEnviados());
+    setLoading(false);
   };
 
   const toggleRule = (ruleId: string) => {
@@ -43,14 +50,14 @@ export default function AutomacoesPage() {
 
   const getTipoLabel = (tipo: AutomationType): string => {
     const labels: Record<AutomationType, string> = {
-      LEMBRETE_24H: '📅 Lembrete 24h',
-      LEMBRETE_2H: '⏰ Lembrete 2h',
-      POS_ATENDIMENTO: '🙏 Pós-atendimento',
-      AVALIACAO: '⭐ Avaliação',
-      RECUPERACAO_CLIENTE: '🔄 Recuperação de cliente',
-      RECUPERACAO_OPORTUNIDADE: '💰 Recuperação de oportunidade',
-      PREENCHIMENTO_HORARIO: '📣 Preenchimento de horário',
-      PROMOCAO: '🎯 Promoção'
+      LEMBRETE_24H: 'Lembrete 24h',
+      LEMBRETE_2H: 'Lembrete 2h',
+      POS_ATENDIMENTO: 'Pos-atendimento',
+      AVALIACAO: 'Avaliacao',
+      RECUPERACAO_CLIENTE: 'Recuperacao de cliente',
+      RECUPERACAO_OPORTUNIDADE: 'Recuperacao de oportunidade',
+      PREENCHIMENTO_HORARIO: 'Preenchimento de horario',
+      PROMOCAO: 'Promocao'
     };
     return labels[tipo] || tipo;
   };
@@ -66,16 +73,25 @@ export default function AutomacoesPage() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando automacoes...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">🤖 Automações</h1>
-          <p className="text-gray-600 mt-2">Central de automações do Funcionário Digital Marcos</p>
+          <h1 className="text-3xl font-bold text-gray-900">Automacoes</h1>
+          <p className="text-gray-600 mt-2">Central de automacoes do Funcionario Digital Marcos</p>
         </div>
 
-        {/* Tabs */}
         <div className="flex space-x-4 mb-6">
           <button
             onClick={() => setActiveTab('regras')}
@@ -85,7 +101,7 @@ export default function AutomacoesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            ⚙️ Regras
+            Regras
           </button>
           <button
             onClick={() => setActiveTab('fila')}
@@ -95,7 +111,7 @@ export default function AutomacoesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            📋 Fila de Envio
+            Fila de Envio
           </button>
           <button
             onClick={() => setActiveTab('metricas')}
@@ -105,11 +121,10 @@ export default function AutomacoesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            📊 Métricas
+            Metricas
           </button>
         </div>
 
-        {/* Regras Tab */}
         {activeTab === 'regras' && (
           <div className="space-y-4">
             {rules.map(rule => (
@@ -135,8 +150,8 @@ export default function AutomacoesPage() {
                     </div>
                     <p className="text-gray-600 mt-1">{rule.descricao}</p>
                     <div className="flex space-x-4 mt-3 text-sm text-gray-500">
-                      <span>📅 Intervalo mínimo: {rule.intervaloMinimoDias} dias</span>
-                      <span>📤 Máx: {rule.maxContatosPeriodo}x por {rule.periodoDias} dias</span>
+                      <span>Intervalo minimo: {rule.intervaloMinimoDias} dias</span>
+                      <span>Max: {rule.maxContatosPeriodo}x por {rule.periodoDias} dias</span>
                     </div>
                   </div>
                   <button
@@ -157,12 +172,10 @@ export default function AutomacoesPage() {
           </div>
         )}
 
-        {/* Fila Tab */}
         {activeTab === 'fila' && (
           <div className="space-y-6">
-            {/* Status da fila */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">📊 Status da Fila</h3>
+              <h3 className="text-lg font-semibold mb-4">Status da Fila</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {stats && Object.entries(stats.porStatus).map(([status, count]) => (
                   <div key={status} className="text-center">
@@ -175,9 +188,8 @@ export default function AutomacoesPage() {
               </div>
             </div>
 
-            {/* Jobs pendentes */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">⏳ Pendentes ({pendingJobs.length})</h3>
+              <h3 className="text-lg font-semibold mb-4">Pendentes ({pendingJobs.length})</h3>
               {pendingJobs.length === 0 ? (
                 <p className="text-gray-500">Nenhum job pendente no momento.</p>
               ) : (
@@ -212,9 +224,8 @@ export default function AutomacoesPage() {
               )}
             </div>
 
-            {/* Últimos enviados */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">✅ Enviados recentemente ({sentJobs.length})</h3>
+              <h3 className="text-lg font-semibold mb-4">Enviados recentemente ({sentJobs.length})</h3>
               {sentJobs.length === 0 ? (
                 <p className="text-gray-500">Nenhum envio registrado ainda.</p>
               ) : (
@@ -251,12 +262,10 @@ export default function AutomacoesPage() {
           </div>
         )}
 
-        {/* Métricas Tab */}
         {activeTab === 'metricas' && stats && (
           <div className="space-y-6">
-            {/* Métricas gerais */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">📊 Métricas Gerais</h3>
+              <h3 className="text-lg font-semibold mb-4">Metricas Gerais</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
@@ -268,7 +277,7 @@ export default function AutomacoesPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-purple-600">{stats.tempoMedioResposta}min</div>
-                  <div className="text-sm text-gray-500">Tempo médio</div>
+                  <div className="text-sm text-gray-500">Tempo medio</div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-600">
@@ -279,9 +288,8 @@ export default function AutomacoesPage() {
               </div>
             </div>
 
-            {/* Jobs por tipo */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">📈 Jobs por Tipo</h3>
+              <h3 className="text-lg font-semibold mb-4">Jobs por Tipo</h3>
               <div className="space-y-3">
                 {Object.entries(stats.porTipo).map(([tipo, count]) => (
                   <div key={tipo} className="flex items-center">
@@ -298,9 +306,8 @@ export default function AutomacoesPage() {
               </div>
             </div>
 
-            {/* Regras ativas */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">⚙️ Regras Ativas</h3>
+              <h3 className="text-lg font-semibold mb-4">Regras Ativas</h3>
               <div className="space-y-2">
                 {rules.filter(r => r.ativo).map(rule => (
                   <div key={rule.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -308,7 +315,7 @@ export default function AutomacoesPage() {
                       <span className="font-medium">{getTipoLabel(rule.tipo)}</span>
                       <span className="text-sm text-gray-500 ml-2">— {rule.nome}</span>
                     </div>
-                    <span className="text-green-600 text-sm font-medium">✓ Ativo</span>
+                    <span className="text-green-600 text-sm font-medium">Ativo</span>
                   </div>
                 ))}
                 {rules.filter(r => !r.ativo).map(rule => (
