@@ -68,6 +68,8 @@ export interface Review {
   appointmentId?: string;
 }
 
+export type CustomerType = 'novo' | 'recorrente' | 'inativo' | 'vip';
+
 export interface Customer {
   id: string;
   name: string;
@@ -78,6 +80,7 @@ export interface Customer {
   loyaltyStamps: number; // e.g. 0-10
   loyaltyPoints: number;
   tier: 'Bronze' | 'Prata' | 'Ouro VIP';
+  customerType?: CustomerType;
   lastVisit?: string;
   preferredBarberId?: string;
   notes?: string;

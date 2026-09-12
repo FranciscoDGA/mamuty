@@ -3,11 +3,12 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
-import { Customer, Appointment } from '@/lib/types';
+import { Customer, Appointment, CustomerType } from '@/lib/types';
 import {
   Users, X, Phone, Calendar, UserPlus, MessageCircle, Trash2,
   Pencil, Mail, UserCheck, History, Clock, CheckCircle2, XCircle,
   Scissors, ChevronRight, ArrowLeft, Star, CalendarPlus, Stethoscope,
+  Search, Filter, User, TrendingUp, AlertTriangle,
 } from 'lucide-react';
 
 export default function ClientesPage() {
@@ -23,6 +24,43 @@ export default function ClientesPage() {
   const [birthdate, setBirthdate] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<CustomerType | 'all'>('all');
+
+  // Calculate customer type based on visit history
+  const getCustomerType = (customer: Customer, apts: Appointment[]): CustomerType => {
+    const completedApts = apts.filter(a => a.status === 'completed');
+    const visitCount = completedApts.length;
+    
+    // Find last visit date
+    const lastApt = completedApts.sort((a, b) => b.date.localeCompare(a.date))[0];
+    const lastVisitDate = lastApt?.date;
+    
+    // Calculate days since last visit
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    let daysSinceLastVisit = 999;
+    if (lastVisitDate) {
+      const lastDate = new Date(lastVisitDate + 'T12:00:00');
+      const diffTime = today.getTime() - lastDate.getTime();
+      daysSinceLastVisit = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // VIP: 10+ visits OR R$500+ spent
+    const totalSpent = completedApts.reduce((sum, a) => sum + (a.totalPrice || 0), 0);
+    if (visitCount >= 10 || totalSpent >= 500) return 'vip';
+    
+    // Inativo: no visits in last 60 days (but has at least 1 visit)
+    if (visitCount > 0 && daysSinceLastVisit > 60) return 'inativo';
+    
+    // Recorrente: 3+ visits
+    if (visitCount >= 3) return 'recorrente';
+    
+    // Novo: 1-2 visits
+    return 'novo';
+  };
 
   const openNewCustomerModal = () => {
     setEditingCustomer(null);
@@ -79,7 +117,40 @@ export default function ClientesPage() {
   const upcomingApts = customerApts.filter(a => a.status === 'confirmed').sort((a, b) => a.date.localeCompare(b.date));
   const totalSpent = completedApts.reduce((acc, a) => acc + (a.totalPrice || 0), 0);
 
+  // Filter customers
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => {
+      // Search filter
+      const matchesSearch = !searchTerm || 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phone.includes(searchTerm);
+      
+      // Type filter
+      const apts = getCustomerApts(customer);
+      const type = getCustomerType(customer, apts);
+      const matchesType = filterType === 'all' || type === filterType;
+      
+      return matchesSearch && matchesType;
+    });
+  }, [customers, searchTerm, filterType, appointments]);
+
   if (selectedCustomer) {
+    const selectedApts = getCustomerApts(selectedCustomer);
+    const selectedCompletedApts = selectedApts.filter(a => a.status === 'completed');
+    const selectedTotalSpent = selectedCompletedApts.reduce((acc, a) => acc + (a.totalPrice || 0), 0);
+    const customerType = getCustomerType(selectedCustomer, selectedApts);
+    const selectedUpcomingApts = selectedApts.filter(a => a.status === 'confirmed').sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Calculate last visit info
+    const lastCompletedApt = selectedCompletedApts.sort((a, b) => b.date.localeCompare(a.date))[0];
+    const lastVisitDate = lastCompletedApt?.date;
+    let daysSinceLastVisit = -1;
+    if (lastVisitDate) {
+      const lastDate = new Date(lastVisitDate + 'T12:00:00');
+      const diffTime = new Date().getTime() - lastDate.getTime();
+      daysSinceLastVisit = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
         <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
@@ -99,6 +170,14 @@ export default function ClientesPage() {
                     : 'bg-orange-950/40 text-orange-400 border border-orange-800/40'
                   }`}>{selectedCustomer.tier}</span>
                 )}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                  customerType === 'vip' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : customerType === 'recorrente' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  : customerType === 'inativo' ? 'bg-slate-500/20 text-slate-400 border border-slate-500/40'
+                  : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                }`}>
+                  {customerType === 'vip' ? 'VIP' : customerType === 'recorrente' ? 'Recorrente' : customerType === 'inativo' ? 'Inativo' : 'Novo'}
+                </span>
               </div>
               <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
                 <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedCustomer.phone}</span>
@@ -131,21 +210,26 @@ export default function ClientesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-center">
             <p className="text-[10px] text-slate-500 uppercase font-bold">Agendamentos</p>
-            <p className="text-3xl font-black text-white mt-1">{customerApts.length}</p>
+            <p className="text-3xl font-black text-white mt-1">{selectedApts.length}</p>
           </div>
           <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-center">
             <p className="text-[10px] text-emerald-400 uppercase font-bold">Concluídos</p>
-            <p className="text-3xl font-black text-emerald-400 mt-1">{completedApts.length}</p>
+            <p className="text-3xl font-black text-emerald-400 mt-1">{selectedCompletedApts.length}</p>
           </div>
           <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-center">
             <p className="text-[10px] text-amber-400 uppercase font-bold">Total Gasto</p>
-            <p className="text-3xl font-black text-amber-400 mt-1">R$ {totalSpent}</p>
+            <p className="text-3xl font-black text-amber-400 mt-1">R$ {selectedTotalSpent}</p>
           </div>
           <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-center">
-            <p className="text-[10px] text-sky-400 uppercase font-bold">Próximo</p>
+            <p className="text-[10px] text-sky-400 uppercase font-bold">Última Visita</p>
             <p className="text-sm font-black text-sky-400 mt-2">
-              {upcomingApts.length > 0 ? `${upcomingApts[0].date.split('-').reverse().join('/')} ${upcomingApts[0].time}` : 'Nenhum'}
+              {lastVisitDate ? `${lastVisitDate.split('-').reverse().join('/')}` : 'Nunca'}
             </p>
+            {daysSinceLastVisit >= 0 && (
+              <p className={`text-[10px] mt-1 ${daysSinceLastVisit > 60 ? 'text-rose-400' : daysSinceLastVisit > 30 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {daysSinceLastVisit === 0 ? 'Hoje' : `${daysSinceLastVisit}d atrás`}
+              </p>
+            )}
           </div>
         </div>
 
@@ -249,21 +333,80 @@ export default function ClientesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white">Base de Clientes</h1>
-          <p className="text-xs text-slate-400 mt-1">{customers.length} cliente{customers.length === 1 ? '' : 's'} cadastrado{customers.length === 1 ? '' : 's'}</p>
+          <p className="text-xs text-slate-400 mt-1">{filteredCustomers.length} cliente{filteredCustomers.length === 1 ? '' : 's'}</p>
         </div>
         <button onClick={openNewCustomerModal} className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition shadow-lg shadow-amber-500/20">
           <UserPlus className="w-4 h-4" /> Novo Cliente
         </button>
       </div>
 
+      {/* Search and Filters */}
+      <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[200px] relative">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Buscar por nome ou telefone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:border-amber-500 outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-400" />
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as CustomerType | 'all')}
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:border-amber-500 outline-none"
+          >
+            <option value="all">Todos</option>
+            <option value="novo">Novo</option>
+            <option value="recorrente">Recorrente</option>
+            <option value="inativo">Inativo</option>
+            <option value="vip">VIP</option>
+          </select>
+        </div>
+        {/* Type Stats */}
+        <div className="flex items-center gap-2 text-[10px]">
+          {['novo', 'recorrente', 'inativo', 'vip'].map(type => {
+            const count = customers.filter(c => {
+              const apts = getCustomerApts(c);
+              return getCustomerType(c, apts) === type;
+            }).length;
+            return (
+              <span key={type} className={`px-2 py-1 rounded-lg font-bold ${
+                type === 'vip' ? 'bg-amber-500/10 text-amber-400' :
+                type === 'recorrente' ? 'bg-emerald-500/10 text-emerald-400' :
+                type === 'inativo' ? 'bg-slate-500/10 text-slate-400' :
+                'bg-sky-500/10 text-sky-400'
+              }`}>
+                {type === 'vip' ? 'VIP' : type === 'recorrente' ? 'Recorrente' : type === 'inativo' ? 'Inativo' : 'Novo'}: {count}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
         <div className="divide-y divide-slate-800/50">
-          {customers.map(customer => {
+          {filteredCustomers.map(customer => {
             const apts = getCustomerApts(customer);
             const completedApts = apts.filter(a => a.status === 'completed');
             const lastApt = apts[0];
             const totalSpent = completedApts.reduce((acc, a) => acc + (a.totalPrice || 0), 0);
             const upcomingApt = apts.find(a => a.status === 'confirmed' && a.date >= new Date().toISOString().split('T')[0]);
+            const customerType = getCustomerType(customer, apts);
+            
+            // Calculate days since last visit
+            const lastCompletedApt = completedApts.sort((a, b) => b.date.localeCompare(a.date))[0];
+            const lastVisitDate = lastCompletedApt?.date;
+            let daysSinceLastVisit = -1;
+            if (lastVisitDate) {
+              const lastDate = new Date(lastVisitDate + 'T12:00:00');
+              const diffTime = new Date().getTime() - lastDate.getTime();
+              daysSinceLastVisit = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            }
+
             return (
               <div key={customer.id} onClick={() => setSelectedCustomer(customer)}
                 className="p-4 sm:p-5 hover:bg-slate-800/30 transition flex items-center justify-between gap-4 cursor-pointer group">
@@ -277,6 +420,14 @@ export default function ClientesPage() {
                         : 'bg-orange-950/40 text-orange-400 border border-orange-800/40'
                       }`}>{customer.tier}</span>
                     )}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      customerType === 'vip' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : customerType === 'recorrente' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : customerType === 'inativo' ? 'bg-slate-500/20 text-slate-400 border border-slate-500/40'
+                      : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                    }`}>
+                      {customerType === 'vip' ? 'VIP' : customerType === 'recorrente' ? 'Recorrente' : customerType === 'inativo' ? 'Inativo' : 'Novo'}
+                    </span>
                     <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-bold shrink-0">
                       {completedApts.length}x
                     </span>
@@ -286,8 +437,11 @@ export default function ClientesPage() {
                     {customer.preferredBarberId && (
                       <span className="flex items-center gap-1 text-amber-400"><UserCheck className="w-3 h-3" /> {barbers.find(b => b.id === customer.preferredBarberId)?.name || '—'}</span>
                     )}
-                    {lastApt && (
-                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Último: {lastApt.date.split('-').reverse().join('/')}</span>
+                    {lastVisitDate && (
+                      <span className={`flex items-center gap-1 ${daysSinceLastVisit > 60 ? 'text-rose-400' : daysSinceLastVisit > 30 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <Calendar className="w-3 h-3" /> Último: {lastVisitDate.split('-').reverse().join('/')}
+                        {daysSinceLastVisit >= 0 && ` (${daysSinceLastVisit}d)`}
+                      </span>
                     )}
                     {totalSpent > 0 && (
                       <span className="flex items-center gap-1 text-emerald-400 font-bold">R$ {totalSpent}</span>
@@ -318,6 +472,13 @@ export default function ClientesPage() {
               </div>
             );
           })}
+          {filteredCustomers.length === 0 && customers.length > 0 && (
+            <div className="p-12 text-center text-slate-500 space-y-3">
+              <Search className="w-10 h-10 mx-auto text-slate-700" />
+              <p className="text-sm">Nenhum cliente encontrado com esses filtros.</p>
+              <button onClick={() => { setSearchTerm(''); setFilterType('all'); }} className="text-xs text-amber-400 hover:underline font-bold">Limpar filtros</button>
+            </div>
+          )}
           {customers.length === 0 && (
             <div className="p-12 text-center text-slate-500 space-y-3">
               <Users className="w-10 h-10 mx-auto text-slate-700" />
