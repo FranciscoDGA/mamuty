@@ -56,6 +56,7 @@ interface AppContextType {
   transactions: FinancialTransaction[];
   updateSalonConfig: (cfg: Partial<SalonConfig>) => void;
   addTransaction: (tx: any) => void;
+  deleteTransaction: (id: string) => void;
   addService: (srv: any) => void;
 
   // New Booking Alert for Admin
@@ -535,7 +536,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.warn('Erro ao atualizar status no Supabase:', err);
     }
 
-    // Recalcular visitas do cliente se foi concluído
+    // Ao concluir, gerar registro financeiro automaticamente
+    if (status === 'completed') {
+      const apt = appointments.find(a => a.id === id);
+      if (apt && apt.totalPrice > 0) {
+        const existing = transactions.find(t => t.appointmentId === id);
+        if (!existing) {
+          const payMap: Record<string, PaymentMethod> = { pix: 'pix', cartao: 'cartao', dinheiro: 'dinheiro' };
+          const newTx: FinancialTransaction = {
+            id: `tx-${Date.now()}`,
+            appointmentId: id,
+            type: 'receita',
+            category: 'Serviços',
+            amount: apt.totalPrice,
+            date: apt.date,
+            paymentMethod: payMap[apt.paymentMethod] || 'pix',
+            description: `Atendimento ${apt.customerName} - ${apt.serviceNames?.join(', ') || 'Serviço'}`,
+            barberId: apt.barberId,
+            barberName: apt.barberName,
+            customerName: apt.customerName,
+          };
+          addTransaction(newTx);
+        }
+      }
+    }
+
     await fetchData();
   };
 
@@ -730,9 +755,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setReviews(prev => [{ ...review, id: 'rev-' + Date.now(), createdAt: new Date().toISOString() }, ...prev]);
   };
 
+  const TX_STORAGE_KEY = 'mamuty_financial_txs';
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const updateSalonConfig = (cfg: Partial<SalonConfig>) => {};
-  const addTransaction = (tx: any) => setTransactions(prev => [tx, ...prev]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TX_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTransactions(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const saveTransactionsToStorage = (txs: FinancialTransaction[]) => {
+    try {
+      localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(txs));
+    } catch {}
+  };
+
+  const addTransaction = (tx: any) => {
+    const newTx = { ...tx, createdAt: tx.createdAt || new Date().toISOString() };
+    setTransactions(prev => {
+      const next = [newTx, ...prev];
+      saveTransactionsToStorage(next);
+      return next;
+    });
+  };
+
+  const deleteTransaction = (id: string) => {
+    setTransactions(prev => {
+      const next = prev.filter(t => t.id !== id);
+      saveTransactionsToStorage(next);
+      return next;
+    });
+  };
   const addService = (srv: any) => setServices(prev => [srv, ...prev]);
 
   const dismissNewBookingAlert = () => setLatestNewBooking(null);
@@ -835,6 +895,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         transactions,
         updateSalonConfig,
         addTransaction,
+        deleteTransaction,
         addService,
         latestNewBooking,
         dismissNewBookingAlert,

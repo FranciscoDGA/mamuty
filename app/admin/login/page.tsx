@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +20,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+const LOGIN_ATTEMPTS_KEY = 'mamuty_login_attempts';
+const LOGIN_LOCKOUT_KEY = 'mamuty_login_lockout';
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const { login, register, user } = useAuth();
@@ -29,6 +32,8 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
 
   // Login form state
   const [loginEmailOrPhone, setLoginEmailOrPhone] = useState('');
@@ -40,6 +45,34 @@ export default function AdminLoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
+
+  // Check lockout on mount
+  useEffect(() => {
+    const lockoutUntil = localStorage.getItem(LOGIN_LOCKOUT_KEY);
+    if (lockoutUntil) {
+      const remaining = parseInt(lockoutUntil) - Date.now();
+      if (remaining > 0) {
+        setIsLocked(true);
+        setLockoutTimer(Math.ceil(remaining / 1000));
+        const interval = setInterval(() => {
+          const left = parseInt(localStorage.getItem(LOGIN_LOCKOUT_KEY) || '0') - Date.now();
+          if (left <= 0) {
+            setIsLocked(false);
+            setLockoutTimer(0);
+            localStorage.removeItem(LOGIN_LOCKOUT_KEY);
+            localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+            clearInterval(interval);
+          } else {
+            setLockoutTimer(Math.ceil(left / 1000));
+          }
+        }, 1000);
+        return () => clearInterval(interval);
+      } else {
+        localStorage.removeItem(LOGIN_LOCKOUT_KEY);
+        localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+      }
+    }
+  }, []);
 
   // If already logged in, show redirect button
   if (user) {
@@ -74,6 +107,12 @@ export default function AdminLoginPage() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isLocked) {
+      setErrorMessage(`Conta bloqueada. Aguarde ${lockoutTimer}s.`);
+      return;
+    }
+
     if (!loginEmailOrPhone.trim() || !loginPassword.trim()) {
       setErrorMessage('Por favor, informe seu e-mail/telefone e senha.');
       return;
@@ -86,9 +125,22 @@ export default function AdminLoginPage() {
     setIsLoading(false);
 
     if (res.success) {
+      localStorage.removeItem(LOGIN_ATTEMPTS_KEY);
+      localStorage.removeItem(LOGIN_LOCKOUT_KEY);
       router.push('/admin');
     } else {
-      setErrorMessage(res.error || 'Credenciais inválidas.');
+      const attempts = parseInt(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || '0') + 1;
+      localStorage.setItem(LOGIN_ATTEMPTS_KEY, attempts.toString());
+
+      if (attempts >= 5) {
+        const lockoutUntil = Date.now() + 15 * 60 * 1000;
+        localStorage.setItem(LOGIN_LOCKOUT_KEY, lockoutUntil.toString());
+        setIsLocked(true);
+        setLockoutTimer(900);
+        setErrorMessage('Muitas tentativas. Conta bloqueada por 15 minutos.');
+      } else {
+        setErrorMessage(`${res.error || 'Credenciais inválidas.'} (${attempts}/5 tentativas)`);
+      }
     }
   };
 
@@ -258,10 +310,15 @@ export default function AdminLoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm transition shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+              disabled={isLoading || isLocked}
+              className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm transition shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
+              {isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado — aguarde {lockoutTimer}s</span>
+                </>
+              ) : isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Validando Acesso...</span>

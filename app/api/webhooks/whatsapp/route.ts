@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { normalizarPhone, extrairPhoneParaBusca, enviarRespostaFuncionario, isZApiConfigured } from '@/lib/zapi';
+import { normalizarPhone, extrairPhoneParaBusca, enviarRespostaFuncionario, isZApiConfigured, validarWebhook } from '@/lib/zapi';
 import { pensarEResponderMarcos, BrainContext } from '@/lib/ai/brain';
 import { obterOuCriarSessao, logConversation, atualizarSessao } from '@/lib/ai/conversationLog';
 import { Appointment, Barber, Customer, Service } from '@/lib/types';
@@ -28,9 +28,12 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 1. Validar webhook
+    // 1. Validar webhook via Security-Key
     const securityKey = request.headers.get('security-key') || undefined;
-    // Na Z-API, a validação é feita via Security-Key header
+    if (!validarWebhook(securityKey)) {
+      console.warn('[Webhook] Security-Key inválida. Requisição rejeitada.');
+      return NextResponse.json({ ok: false, error: 'Invalid security key' }, { status: 401 });
+    }
 
     // 2. Parse do body
     const body = await request.json();
@@ -58,15 +61,23 @@ export async function POST(request: NextRequest) {
     const normalizedPhone = normalizarPhone(phone);
     const phoneParaBusca = extrairPhoneParaBusca(normalizedPhone);
 
+    // Sanitizar: só números para consultas
+    const safePhoneQuery = normalizedPhone.replace(/\D/g, '');
+    const safePhoneSearch = phoneParaBusca.replace(/\D/g, '');
+
     // 4.1 Rate limiting por telefone
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
     const apiRateLimit = checkApiRateLimit(ip);
     if (!apiRateLimit.allowed) {
-      console.log(`[RateLimit] API limit exceeded for IP: ${ip}`);
       return NextResponse.json({ ok: false, error: 'Rate limit exceeded' }, { status: 429 });
     }
 
-    console.log(`[Webhook] Mensagem recebida de ${normalizedPhone}: "${messageBody.substring(0, 50)}..."`);
+    const bookingRateLimit = checkBookingRateLimit(safePhoneQuery);
+    if (!bookingRateLimit.allowed) {
+      return NextResponse.json({ ok: false, error: 'Too many requests from this number' }, { status: 429 });
+    }
+
+    console.log(`[Webhook] Mensagem recebida: ${messageType}`);
 
     // 5. Processar apenas mensagens de texto
     if (messageType !== 'text' && messageType !== 'buttons_response' && messageType !== 'list_response') {
@@ -86,7 +97,7 @@ export async function POST(request: NextRequest) {
       const { data: clientes } = await supabase
         .from('customers')
         .select('*')
-        .or(`phone.eq.${normalizedPhone},phone.eq.${phoneParaBusca},phone.like.%${phoneParaBusca}`)
+        .or(`phone.eq.${safePhoneQuery},phone.eq.${safePhoneSearch},phone.like.%${safePhoneSearch}`)
         .limit(1);
 
       if (clientes && clientes.length > 0) {
@@ -332,7 +343,7 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (!error && newAppointment) {
-            console.log(`[Webhook] Agendamento criado: ${newAppointment.id}`);
+            console.log(`[Webhook] Agendamento criado com sucesso`);
 
             // Processar automações para o novo agendamento
             const aptForAutomation: Appointment = {
@@ -382,7 +393,7 @@ export async function POST(request: NextRequest) {
         console.error('[Webhook] Erro ao enviar resposta:', sendResult.error);
       }
     } else {
-      console.log('[Webhook] Z-API não configurada. Resposta:', brainOutput.reply);
+      console.log('[Webhook] Z-API não configurada. Resposta registrada em log.');
     }
 
     // 17. Responder ao webhook

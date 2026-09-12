@@ -108,6 +108,9 @@ export interface FinancialTransaction {
   paymentMethod: PaymentMethod | 'dinheiro';
   description: string;
   barberId?: string;
+  barberName?: string;
+  customerName?: string;
+  createdAt?: string;
 }
 
 export interface PortfolioPhoto {

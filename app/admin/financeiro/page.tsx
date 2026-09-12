@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { FinancialTransaction } from '@/lib/types';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -23,30 +24,14 @@ import {
   Receipt
 } from 'lucide-react';
 
-interface LocalTransaction {
-  id: string;
-  type: 'receita' | 'despesa';
-  category: string;
-  description: string;
-  amount: number;
-  date: string;
-  paymentMethod: 'pix' | 'cartao' | 'dinheiro';
-  barberId?: string;
-  barberName?: string;
-}
-
-const INITIAL_TRANSACTIONS: LocalTransaction[] = [];
-
 export default function FinanceiroPage() {
-  const { appointments, barbers } = useApp();
+  const { appointments, barbers, transactions, addTransaction, deleteTransaction } = useApp();
 
-  const [transactions, setTransactions] = useState<LocalTransaction[]>(INITIAL_TRANSACTIONS);
   const [filterType, setFilterType] = useState<'all' | 'receita' | 'despesa'>('all');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'month'>('month');
-  const [commissionRate, setCommissionRate] = useState<number>(50); // 50% de comissão padrão
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('month');
+  const [commissionRate, setCommissionRate] = useState<number>(50);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // New Transaction Form State
   const [txForm, setTxForm] = useState({
     type: 'receita' as 'receita' | 'despesa',
     category: 'Serviços',
@@ -56,31 +41,6 @@ export default function FinanceiroPage() {
     barberName: ''
   });
 
-  // Load from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mamuty_financial_txs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setTransactions(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao carregar transações financeiras:', e);
-    }
-  }, []);
-
-  // Save to localStorage
-  const saveTransactions = (newTxs: LocalTransaction[]) => {
-    setTransactions(newTxs);
-    try {
-      localStorage.setItem('mamuty_financial_txs', JSON.stringify(newTxs));
-    } catch (e) {
-      console.warn('Erro ao salvar transações financeiras:', e);
-    }
-  };
-
   // Calculations
   const todayStr = new Date().toISOString().split('T')[0];
   const currentMonthStr = todayStr.substring(0, 7);
@@ -89,6 +49,17 @@ export default function FinanceiroPage() {
     return transactions.filter(t => {
       if (filterType !== 'all' && t.type !== filterType) return false;
       if (dateFilter === 'today' && t.date !== todayStr) return false;
+      if (dateFilter === 'week') {
+        const d = new Date(t.date);
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        if (d < startOfWeek || d > endOfWeek) return false;
+      }
       if (dateFilter === 'month' && !t.date.startsWith(currentMonthStr)) return false;
       return true;
     });
@@ -116,7 +87,8 @@ export default function FinanceiroPage() {
     const res = { pix: 0, cartao: 0, dinheiro: 0 };
     filteredTransactions.forEach(t => {
       if (t.type === 'receita') {
-        res[t.paymentMethod] += t.amount;
+        const key = (t.paymentMethod === 'debito' || t.paymentMethod === 'credito' || t.paymentMethod === 'cartao') ? 'cartao' : t.paymentMethod === 'presencial' ? 'dinheiro' : 'pix';
+        res[key] += t.amount;
       }
     });
     return res;
@@ -127,9 +99,9 @@ export default function FinanceiroPage() {
     const txHoje = transactions.filter(t => t.date === todayStr);
     const recHoje = txHoje.filter(t => t.type === 'receita').reduce((a, b) => a + b.amount, 0);
     const despHoje = txHoje.filter(t => t.type === 'despesa').reduce((a, b) => a + b.amount, 0);
-    const dinheiroFisico = txHoje.filter(t => t.type === 'receita' && t.paymentMethod === 'dinheiro').reduce((a, b) => a + b.amount, 0);
+    const dinheiroFisico = txHoje.filter(t => t.type === 'receita' && (t.paymentMethod === 'dinheiro' || t.paymentMethod === 'presencial')).reduce((a, b) => a + b.amount, 0);
     const pixHoje = txHoje.filter(t => t.type === 'receita' && t.paymentMethod === 'pix').reduce((a, b) => a + b.amount, 0);
-    const cartaoHoje = txHoje.filter(t => t.type === 'receita' && t.paymentMethod === 'cartao').reduce((a, b) => a + b.amount, 0);
+    const cartaoHoje = txHoje.filter(t => t.type === 'receita' && (t.paymentMethod === 'cartao' || t.paymentMethod === 'debito' || t.paymentMethod === 'credito')).reduce((a, b) => a + b.amount, 0);
     return { recHoje, despHoje, saldoHoje: recHoje - despHoje, dinheiroFisico, pixHoje, cartaoHoje, totalAtendimentos: txHoje.filter(t => t.type === 'receita').length };
   }, [transactions, todayStr]);
 
@@ -172,7 +144,7 @@ export default function FinanceiroPage() {
       return;
     }
 
-    const newTx: LocalTransaction = {
+    const newTx: FinancialTransaction = {
       id: `tx-${Date.now()}`,
       type: txForm.type,
       category: txForm.category,
@@ -180,10 +152,10 @@ export default function FinanceiroPage() {
       amount: numAmount,
       date: new Date().toISOString().split('T')[0],
       paymentMethod: txForm.paymentMethod,
-      barberName: txForm.barberName || undefined
+      barberName: txForm.barberName || undefined,
     };
 
-    saveTransactions([newTx, ...transactions]);
+    addTransaction(newTx);
     setIsModalOpen(false);
     setTxForm({
       type: 'receita',
@@ -198,8 +170,7 @@ export default function FinanceiroPage() {
 
   const handleDeleteTx = (id: string, desc: string) => {
     if (!confirm(`Deseja realmente remover o lançamento "${desc}"?`)) return;
-    const next = transactions.filter(t => t.id !== id);
-    saveTransactions(next);
+    deleteTransaction(id);
   };
 
   const exportCSV = () => {
@@ -274,6 +245,14 @@ export default function FinanceiroPage() {
             Hoje
           </button>
           <button
+            onClick={() => setDateFilter('week')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              dateFilter === 'week' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            Semana
+          </button>
+          <button
             onClick={() => setDateFilter('month')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
               dateFilter === 'month' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
@@ -313,6 +292,7 @@ export default function FinanceiroPage() {
             {filterType === 'all' ? 'Todas' : filterType === 'receita' ? 'Receitas' : 'Despesas'}
           </strong>
           {dateFilter === 'today' && ' — Hoje'}
+          {dateFilter === 'week' && ' — Esta Semana'}
           {dateFilter === 'month' && ' — Mês Atual'}
           {dateFilter === 'all' && ' — Histórico Completo'}
           {' • '}<strong className="text-amber-400">{filteredTransactions.length}</strong> registro(s)
@@ -649,6 +629,7 @@ export default function FinanceiroPage() {
               <p className="text-sm">Nenhum lançamento encontrado para este filtro.</p>
               <p className="text-xs text-slate-600">
                 {dateFilter === 'today' && 'Nenhum lançamento registrado hoje. Clique em "Lançar no Caixa" para adicionar.'}
+                {dateFilter === 'week' && 'Nenhum lançamento nesta semana. Clique em "Lançar no Caixa" para adicionar.'}
                 {dateFilter === 'month' && 'Nenhum lançamento neste mês. Clique em "Lançar no Caixa" para adicionar.'}
                 {dateFilter === 'all' && 'Nenhum lançamento registrado ainda. Comece clicando em "Lançar no Caixa".'}
               </p>

@@ -114,11 +114,11 @@ export async function sendReminders(): Promise<ReminderResult> {
           .eq('id', apt.id);
 
         result.sent++;
-        console.log(`[Reminder] Enviado para ${apt.customer_phone}: ${apt.id}`);
+        console.log(`[Reminder] Enviado com sucesso`);
       } catch (err: any) {
         result.failed++;
-        result.errors.push(`Erro ao enviar para ${apt.customer_phone}: ${err.message}`);
-        console.error(`[Reminder] Erro ao enviar para ${apt.customer_phone}:`, err);
+        result.errors.push(`Erro ao enviar lembrete`);
+        console.error(`[Reminder] Erro ao enviar lembrete`);
       }
     }
 
