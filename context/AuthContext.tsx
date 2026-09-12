@@ -31,8 +31,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          // Sessão inválida ou corrompida — limpar tudo
+          setUser(null);
+          localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
+          await supabase.auth.signOut();
+        } else if (session?.user) {
           const authUser: AdminUser = {
             id: session.user.id,
             name: session.user.user_metadata?.name || 'Admin',
@@ -42,9 +48,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           setUser(authUser);
           localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(authUser));
+        } else {
+          // Sem sessão válida — limpar localStorage
+          setUser(null);
+          localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
         }
       } catch (e) {
         console.error('Auth init error:', e);
+        setUser(null);
+        localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
       } finally {
         setIsLoading(false);
       }

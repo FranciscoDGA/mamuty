@@ -25,7 +25,7 @@ const LOGIN_LOCKOUT_KEY = 'mamuty_login_lockout';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, register, user } = useAuth();
+  const { login, register, user, logout } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -92,6 +92,15 @@ export default function AdminLoginPage() {
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition shadow-lg shadow-amber-500/20 active:scale-95"
             >
               Acessar Painel de Gestão &rarr;
+            </button>
+            <button
+              onClick={async () => {
+                await logout();
+                window.location.reload();
+              }}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer"
+            >
+              Sair e fazer login novamente
             </button>
             <Link
               href="/"
