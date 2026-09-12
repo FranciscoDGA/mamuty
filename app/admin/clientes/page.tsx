@@ -260,7 +260,10 @@ export default function ClientesPage() {
         <div className="divide-y divide-slate-800/50">
           {customers.map(customer => {
             const apts = getCustomerApts(customer);
+            const completedApts = apts.filter(a => a.status === 'completed');
             const lastApt = apts[0];
+            const totalSpent = completedApts.reduce((acc, a) => acc + (a.totalPrice || 0), 0);
+            const upcomingApt = apts.find(a => a.status === 'confirmed' && a.date >= new Date().toISOString().split('T')[0]);
             return (
               <div key={customer.id} onClick={() => setSelectedCustomer(customer)}
                 className="p-4 sm:p-5 hover:bg-slate-800/30 transition flex items-center justify-between gap-4 cursor-pointer group">
@@ -275,7 +278,7 @@ export default function ClientesPage() {
                       }`}>{customer.tier}</span>
                     )}
                     <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-bold shrink-0">
-                      {apts.length}x
+                      {completedApts.length}x
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
@@ -286,7 +289,16 @@ export default function ClientesPage() {
                     {lastApt && (
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Último: {lastApt.date.split('-').reverse().join('/')}</span>
                     )}
+                    {totalSpent > 0 && (
+                      <span className="flex items-center gap-1 text-emerald-400 font-bold">R$ {totalSpent}</span>
+                    )}
                   </div>
+                  {upcomingApt && (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] text-sky-400">
+                      <CalendarPlus className="w-3 h-3" />
+                      <span>Próximo: {upcomingApt.date.split('-').reverse().join('/')} às {upcomingApt.time} — {upcomingApt.barberName}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <a href={`https://wa.me/55${customer.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}

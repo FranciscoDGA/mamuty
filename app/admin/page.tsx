@@ -31,6 +31,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import DashboardCharts from '@/components/admin/DashboardCharts';
+import OperationalDashboard from '@/components/admin/OperationalDashboard';
 
 export default function AdminPage() {
   const { 
@@ -262,58 +263,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Hoje</p>
-          <p className="text-3xl font-black text-white mt-1">{stats.total}</p>
-          <p className="text-[11px] text-slate-400">Agendamentos</p>
-        </div>
-        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Aguardando</p>
-          <p className="text-3xl font-black text-amber-400 mt-1">{stats.aguardando}</p>
-          <p className="text-[11px] text-slate-400">Na fila</p>
-        </div>
-        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Confirmados</p>
-          <p className="text-3xl font-black text-sky-400 mt-1">{stats.pending}</p>
-          <p className="text-[11px] text-slate-400">Pendentes</p>
-        </div>
-        <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Concluídos</p>
-          <p className="text-3xl font-black text-emerald-400 mt-1">{stats.completed}</p>
-          <p className="text-[11px] text-slate-400">Atendimentos</p>
-        </div>
-      </div>
-
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { href: '/admin/clientes', label: 'Clientes', icon: Users, color: 'text-blue-400' },
-          { href: '/admin/servicos', label: 'Serviços', icon: Scissors, color: 'text-amber-400' },
-          { href: '/admin/profissionais', label: 'Profissionais', icon: User, color: 'text-emerald-400' },
-          { href: '/admin/configuracoes', label: 'Configurações', icon: BarChart3, color: 'text-slate-400' },
-        ].map(link => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="bg-slate-900/50 hover:bg-slate-800/50 border border-slate-800 hover:border-slate-700 p-4 rounded-2xl flex items-center justify-between transition group"
-          >
-            <div className="flex items-center gap-3">
-              <link.icon className={`w-5 h-5 ${link.color}`} />
-              <span className="text-sm font-bold text-slate-300 group-hover:text-white transition">{link.label}</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition" />
-          </Link>
-        ))}
-      </div>
-
-      {/* Dashboard Charts */}
-      <DashboardCharts 
-        appointments={appointments} 
-        barbers={barbers} 
-        services={services} 
-      />
+      {/* Operational Dashboard */}
+      <OperationalDashboard selectedDate={selectedDate} />
 
       {/* Filters */}
       <div className="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
