@@ -14,6 +14,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '../supabase-admin';
 import { BookingEvent, registerBookingEventListener } from '../booking/events';
+import { formatWhatsAppMessage, WhatsAppMessageType } from '../whatsapp';
+import { enviarMensagemUazapi, isUazapiConfigured } from '../uazapi';
+import { INITIAL_SALON_CONFIG } from '../data';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -57,16 +60,16 @@ export interface BookingReminderRecord {
 
 export interface RemindersConfig {
   active: boolean;
-  reminder_1_minutes: number; // default: 1440 (24h)
-  reminder_2_minutes: number; // default: 180 (3h)
-  reminder_3_minutes: number; // default: 30 (30min)
+  reminder_1_minutes: number; // 24h (1440 min)
+  reminder_2_minutes: number; // 2h (120 min)
+  reminder_3_minutes: number; // 15 min (15 min)
 }
 
 export const DEFAULT_REMINDERS_CONFIG: RemindersConfig = {
   active: true,
   reminder_1_minutes: 1440,
-  reminder_2_minutes: 180,
-  reminder_3_minutes: 30,
+  reminder_2_minutes: 120,
+  reminder_3_minutes: 15,
 };
 
 // ─── TIMEZONE & DATE UTILS ───────────────────────────────────────────────────
@@ -391,15 +394,49 @@ export async function processDueReminders(
       const barberName = apt.barber_name || 'Profissional';
       const serviceName = Array.isArray(apt.service_names) ? apt.service_names.join(', ') : 'Serviço';
 
-      const reminderTitle = '⏰ Lembrete de Horário — Mamuty';
-      const reminderMsg =
-        `Olá, ${customerName}! 👋\n\n` +
-        `Passando para lembrar do seu horário na Mamuty Barbearia:\n` +
-        `✂️ *Serviço:* ${serviceName}\n` +
-        `💈 *Profissional:* ${barberName}\n` +
-        `📅 *Data:* ${formatDateBR(dateStr)} às ${timeStr}\n\n` +
-        `📍 *Ponto de referência:* Posto de Gasolina — Cumaru.\n` +
-        `Te esperamos! Se precisar de algo, estamos à disposição.`;
+      // Mapeia o tipo de lembrete para o template correto dos 3 bibes
+      let bibeType: WhatsAppMessageType = 'lembrete_15m';
+      let reminderTitle = '🚨 3º BIBE: Horário em 15 minutos! (Tolerância 10 min)';
+
+      if (item.reminder_type === 'reminder_1') {
+        bibeType = 'lembrete_24h';
+        reminderTitle = '🔔 1º BIBE: Seu horário é amanhã — Mamuty';
+      } else if (item.reminder_type === 'reminder_2') {
+        bibeType = 'lembrete_2h';
+        reminderTitle = '⏰ 2º BIBE: Seu horário é em 2 horas — Mamuty';
+      }
+
+      const reminderMsg = formatWhatsAppMessage(
+        {
+          id: apt.id,
+          customerName,
+          customerPhone: apt.customer_phone || '',
+          barberId: apt.barber_id || '',
+          barberName,
+          serviceIds: Array.isArray(apt.service_ids) ? apt.service_ids : [],
+          serviceNames: Array.isArray(apt.service_names) ? apt.service_names : [serviceName],
+          date: dateStr,
+          time: timeStr,
+          totalPrice: Number(apt.total_price || apt.price || 0),
+          totalDurationMinutes: apt.total_duration_minutes || apt.duration_minutes || 30,
+          paymentMethod: apt.payment_method || 'pix',
+          paymentStatus: apt.status === 'completed' ? 'pago' : 'pendente',
+          status: apt.status || 'confirmed',
+          whatsappNotificationSent: false,
+          createdAt: apt.created_at || new Date().toISOString(),
+        },
+        INITIAL_SALON_CONFIG,
+        bibeType
+      );
+
+      // Dispara no WhatsApp via Uazapi se configurado
+      if (apt.customer_phone && isUazapiConfigured()) {
+        try {
+          await enviarMensagemUazapi(reminderMsg, apt.customer_phone);
+        } catch (uazapiErr) {
+          console.warn('[processDueReminders] Erro ao enviar WhatsApp via Uazapi:', uazapiErr);
+        }
+      }
 
       // Create in-app notification for the customer
       const notifResult = await createNotification(supabase, {
@@ -480,26 +517,44 @@ export async function processBookingEvent(
     switch (type) {
       // ─── 1. BOOKING_CREATED ───
       case 'BOOKING_CREATED': {
-        // Customer confirmation message
-        const clientTitle = 'Agendamento Confirmado! ✂️';
-        const clientMsg =
-          `Olá, ${customerName}!\n\n` +
-          `Seu horário na Mamuty está confirmado.\n\n` +
-          `• Serviço: ${serviceName}\n` +
-          `• Profissional: ${barberName}\n` +
-          `• Data: ${formatDateBR(dateStr)}\n` +
-          `• Horário: ${timeStr}\n` +
-          `• Duração: ${duration} minutos\n` +
-          `• Valor: R$ ${Number(totalPrice).toFixed(2)}\n` +
-          `• Pagamento: ${paymentMethod}\n\n` +
-          `Ponto de referência: Posto de Gasolina — Cumaru.\n` +
-          `Esperamos você!`;
+        // Customer confirmation message using the official template with 10-min tolerance & location
+        const clientMsg = formatWhatsAppMessage(
+          {
+            id: apt.id,
+            customerName,
+            customerPhone,
+            barberId: apt.barber_id || '',
+            barberName,
+            serviceIds: Array.isArray(apt.service_ids) ? apt.service_ids : [],
+            serviceNames: Array.isArray(apt.service_names) ? apt.service_names : [serviceName],
+            date: dateStr,
+            time: timeStr,
+            totalPrice: Number(totalPrice),
+            totalDurationMinutes: duration,
+            paymentMethod: paymentMethod as any,
+            paymentStatus: apt.status === 'completed' ? 'pago' : 'pendente',
+            status: apt.status || 'confirmed',
+            whatsappNotificationSent: false,
+            createdAt: apt.created_at || new Date().toISOString(),
+          },
+          INITIAL_SALON_CONFIG,
+          'cliente'
+        );
+
+        // Dispara no WhatsApp do cliente via Uazapi imediatamente
+        if (customerPhone && isUazapiConfigured()) {
+          try {
+            await enviarMensagemUazapi(clientMsg, customerPhone);
+          } catch (uazErr) {
+            console.warn('[BOOKING_CREATED] Falha ao enviar WhatsApp confirmação:', uazErr);
+          }
+        }
 
         await createNotification(supabase, {
           recipientType: 'customer',
           recipientPhone: customerPhone,
           type: 'BOOKING_CREATED',
-          title: clientTitle,
+          title: 'Agendamento Confirmado! ✂️',
           message: clientMsg,
           bookingId: apt.id,
           metadata: { serviceName, barberName, date: dateStr, time: timeStr, totalPrice },
@@ -507,15 +562,37 @@ export async function processBookingEvent(
 
         // Store alert message
         const storeTitle = 'Novo Agendamento 🔔';
-        const storeMsg =
-          `NOVO AGENDAMENTO\n\n` +
-          `Cliente: ${customerName}\n` +
-          `Telefone: ${customerPhone}\n` +
-          `Serviço: ${serviceName}\n` +
-          `Profissional: ${barberName}\n` +
-          `Data: ${formatDateBR(dateStr)}\n` +
-          `Horário: ${timeStr}\n` +
-          `Valor: R$ ${Number(totalPrice).toFixed(2)}`;
+        const storeMsg = formatWhatsAppMessage(
+          {
+            id: apt.id,
+            customerName,
+            customerPhone,
+            barberId: apt.barber_id || '',
+            barberName,
+            serviceIds: Array.isArray(apt.service_ids) ? apt.service_ids : [],
+            serviceNames: Array.isArray(apt.service_names) ? apt.service_names : [serviceName],
+            date: dateStr,
+            time: timeStr,
+            totalPrice: Number(totalPrice),
+            totalDurationMinutes: duration,
+            paymentMethod: paymentMethod as any,
+            paymentStatus: apt.status === 'completed' ? 'pago' : 'pendente',
+            status: apt.status || 'confirmed',
+            whatsappNotificationSent: false,
+            createdAt: apt.created_at || new Date().toISOString(),
+          },
+          INITIAL_SALON_CONFIG,
+          'barbearia'
+        );
+
+        // Notifica o WhatsApp do Salão via Uazapi se configurado
+        if (INITIAL_SALON_CONFIG.whatsappNumber && isUazapiConfigured()) {
+          try {
+            await enviarMensagemUazapi(storeMsg, INITIAL_SALON_CONFIG.whatsappNumber);
+          } catch (storeUazErr) {
+            console.warn('[BOOKING_CREATED] Falha ao enviar WhatsApp para salão:', storeUazErr);
+          }
+        }
 
         await createNotification(supabase, {
           recipientType: 'store',

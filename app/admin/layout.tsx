@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import AdminLoginPage from './login/page';
+import NewBookingAudioAlert from '@/components/admin/NewBookingAudioAlert';
 import { 
   LayoutDashboard, 
   Users, 
@@ -325,6 +326,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* MAIN CONTENT AREA */}
       {/* ========================================================================= */}
       <main className="flex-1 min-w-0 p-4 md:p-8">
+        <NewBookingAudioAlert />
         {children}
       </main>
 
