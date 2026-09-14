@@ -1,4 +1,23 @@
-import { Appointment, Barber, BarberSchedule, BlockedSlot, ClosedDay } from './types';
+import {
+  Appointment,
+  Barber,
+  BarberSchedule,
+  BlockedSlot,
+  ClosedDay,
+} from './types';
+import {
+  BUSINESS_HOURS,
+  DayOfWeek,
+  TimeWindow,
+  getDaySchedule,
+  isSalonOpen,
+  timeToMinutes,
+  minutesToTime,
+  doesServiceFitInDay,
+  crossesLunchBreak,
+} from './businessHours';
+
+// ─── Public types ────────────────────────────────────────────────────────────
 
 export interface DisponibilidadeQuery {
   data: string; // ISO format 'YYYY-MM-DD'
@@ -10,18 +29,19 @@ export interface DisponibilidadeQuery {
 export interface SlotDisponibilidade {
   horario: string; // '15:00', '16:00'
   disponivel: boolean;
-  motivo?: string; // 'Ocupado por outro atendimento', 'Intervalo / Almoço (12h às 14h)', etc.
+  motivo?: string;
   barbeirosDisponiveis: { id: string; name: string }[];
 }
 
 export interface InfoFuncionamento {
   diaSemana: string;
-  abertura: string; // '08:00'
-  fechamento: string; // '20:00', '18:00', '12:00'
+  windows: TimeWindow[]; // canonical list of open windows
+  abertura: string; // first window start (legacy compat)
+  fechamento: string; // last window end (legacy compat)
   fechamentoMinutos: number;
   intervaloInicio: string; // '12:00'
   intervaloFim: string; // '14:00'
-  temIntervalo: boolean;
+  temIntervalo: boolean; // true for Mon–Sat, false for Sunday
 }
 
 export interface ResultadoDisponibilidade {
@@ -34,65 +54,47 @@ export interface ResultadoDisponibilidade {
   closedDayReason?: string;
 }
 
+// ─── Core helpers ────────────────────────────────────────────────────────────
+
+const DAY_NAMES = [
+  'Domingo', 'Segunda', 'Terça', 'Quarta',
+  'Quinta', 'Sexta', 'Sábado',
+];
+
 /**
- * Retorna as regras de funcionamento oficiais da Barbearia Mamuty para um dia específico.
- * Segunda: até 20h
- * Terça: até 18h
- * Quarta a Sábado: até 20h
- * Domingo: até 12h
- * Intervalo de almoço: 12h às 14h (exceto domingo)
+ * Returns the official operating hours for a given date.
+ * All data comes from businessHours.ts (SSoT).
  */
 export function getHorarioFuncionamentoDia(dataIso: string): InfoFuncionamento {
   const dateObj = new Date(dataIso + 'T12:00:00');
-  const dayOfWeek = dateObj.getDay();
+  const dayOfWeek = dateObj.getDay() as DayOfWeek;
+  const schedule = getDaySchedule(dayOfWeek);
 
-  const diasNomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const diaSemana = diasNomes[dayOfWeek];
-
-  if (dayOfWeek === 0) {
-    return {
-      diaSemana,
-      abertura: '08:00',
-      fechamento: '12:00',
-      fechamentoMinutos: 12 * 60,
-      intervaloInicio: '12:00',
-      intervaloFim: '12:00',
-      temIntervalo: false
-    };
-  }
-
-  if (dayOfWeek === 2) {
-    return {
-      diaSemana,
-      abertura: '08:00',
-      fechamento: '18:00',
-      fechamentoMinutos: 18 * 60,
-      intervaloInicio: '12:00',
-      intervaloFim: '14:00',
-      temIntervalo: true
-    };
-  }
+  const windows = schedule.windows;
+  const firstWindow = windows[0];
+  const lastWindow = windows[windows.length - 1];
 
   return {
-    diaSemana,
-    abertura: '08:00',
-    fechamento: '20:00',
-    fechamentoMinutos: 20 * 60,
+    diaSemana: DAY_NAMES[dayOfWeek],
+    windows,
+    abertura: firstWindow.start,
+    fechamento: lastWindow.end,
+    fechamentoMinutos: timeToMinutes(lastWindow.end),
     intervaloInicio: '12:00',
     intervaloFim: '14:00',
-    temIntervalo: true
+    temIntervalo: dayOfWeek !== 0, // Sunday has no lunch interval
   };
 }
 
 /**
- * Verifica se um barbeiro está de folga em uma data específica.
+ * Checks if a barber is off on a given date.
  */
 export function isBarberOnDayOff(
   barberId: string,
   dataIso: string,
-  barberSchedules: BarberSchedule[]
+  barberSchedules: BarberSchedule[],
 ): boolean {
-  const schedule = barberSchedules.find(s => s.barberId === barberId);
+  const schedule = barberSchedules.find((s) => s.barberId === barberId);
   if (!schedule) return false;
 
   const dateObj = new Date(dataIso + 'T12:00:00');
@@ -102,28 +104,25 @@ export function isBarberOnDayOff(
 }
 
 /**
- * Verifica se um slot de tempo está bloqueado para um barbeiro.
+ * Checks if a slot is blocked for a barber.
  */
 export function isSlotBlocked(
   barberId: string,
   dataIso: string,
   slotMinutes: number,
   slotEndMinutes: number,
-  blockedSlots: BlockedSlot[]
+  blockedSlots: BlockedSlot[],
 ): { blocked: boolean; reason?: string } {
   const relevantBlocks = blockedSlots.filter(
-    b => b.barberId === barberId && b.date === dataIso
+    (b) => b.barberId === barberId && b.date === dataIso,
   );
 
   for (const block of relevantBlocks) {
-    const blockStartMinutes = parseInt(block.startTime.split(':')[0]) * 60 + parseInt(block.startTime.split(':')[1]);
-    const blockEndMinutes = parseInt(block.endTime.split(':')[0]) * 60 + parseInt(block.endTime.split(':')[1]);
+    const blockStart = timeToMinutes(block.startTime);
+    const blockEnd = timeToMinutes(block.endTime);
 
-    if (slotMinutes < blockEndMinutes && slotEndMinutes > blockStartMinutes) {
-      return {
-        blocked: true,
-        reason: block.reason || 'Horário bloqueado'
-      };
+    if (slotMinutes < blockEnd && slotEndMinutes > blockStart) {
+      return { blocked: true, reason: block.reason || 'Horário bloqueado' };
     }
   }
 
@@ -131,18 +130,58 @@ export function isSlotBlocked(
 }
 
 /**
- * Verifica se a barbearia está fechada em uma data específica.
+ * Checks if the shop is closed on a specific date.
  */
-export function isShopClosed(dataIso: string, closedDays: ClosedDay[]): { closed: boolean; reason?: string } {
-  const closed = closedDays.find(c => c.date === dataIso);
+export function isShopClosed(
+  dataIso: string,
+  closedDays: ClosedDay[],
+): { closed: boolean; reason?: string } {
+  const closed = closedDays.find((c) => c.date === dataIso);
   if (closed) {
     return { closed: true, reason: closed.reason || 'Barbearia fechada' };
   }
   return { closed: false };
 }
 
+// ─── Slot generation using windows ───────────────────────────────────────────
+
 /**
- * Gera os próximos 30 dias com indicação de disponibilidade.
+ * Generate candidate time slots that fit entirely within any working window
+ * for the given day of week and service duration.
+ *
+ * Sunday: only one window (08:00–12:00)
+ * Mon–Sat: two windows (08:00–12:00, 14:00–20:00)
+ */
+function generateCandidateSlots(
+  dayOfWeek: DayOfWeek,
+  serviceDurationMinutes: number,
+  stepMinutes: number = 30,
+): string[] {
+  const schedule = getDaySchedule(dayOfWeek);
+  if (!schedule.isOpen) return [];
+
+  const slots: string[] = [];
+
+  for (const window of schedule.windows) {
+    const windowStart = timeToMinutes(window.start);
+    const windowEnd = timeToMinutes(window.end);
+
+    for (
+      let t = windowStart;
+      t + serviceDurationMinutes <= windowEnd;
+      t += stepMinutes
+    ) {
+      slots.push(minutesToTime(t));
+    }
+  }
+
+  return slots;
+}
+
+// ─── Calendar generator ──────────────────────────────────────────────────────
+
+/**
+ * Generates the next 30 days with availability indicators.
  */
 export function generateCalendarDays(
   barbers: Barber[],
@@ -150,7 +189,7 @@ export function generateCalendarDays(
   barberSchedules: BarberSchedule[],
   blockedSlots: BlockedSlot[],
   closedDays: ClosedDay[],
-  serviceDurationMinutes: number = 40
+  serviceDurationMinutes: number = 40,
 ): {
   iso: string;
   dayName: string;
@@ -170,10 +209,14 @@ export function generateCalendarDays(
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     const iso = d.toISOString().split('T')[0];
-    const dayOfWeek = d.getDay();
+    const dayOfWeek = d.getDay() as DayOfWeek;
 
     const isToday = i === 0;
-    const dayName = isToday ? 'Hoje' : i === 1 ? 'Amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'short' });
+    const dayName = isToday
+      ? 'Hoje'
+      : i === 1
+        ? 'Amanhã'
+        : d.toLocaleDateString('pt-BR', { weekday: 'short' });
     const dayNum = d.getDate();
     const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
     const isSunday = dayOfWeek === 0;
@@ -184,47 +227,42 @@ export function generateCalendarDays(
       days.push({
         iso, dayName, dayNum, monthName, isToday, isSunday,
         isOpen: false, hasAvailability: false,
-        closedReason: shopClosed.reason
+        closedReason: shopClosed.reason,
+      });
+      continue;
+    }
+
+    // Check if shop is open this day at all
+    if (!isSalonOpen(dayOfWeek)) {
+      days.push({
+        iso, dayName, dayNum, monthName, isToday, isSunday,
+        isOpen: false, hasAvailability: false,
+        closedReason: 'Barbearia fechada',
       });
       continue;
     }
 
     // Check if any barber is available this day
     let hasAnyAvailability = false;
-    const activeBarbers = barbers.filter(b => b.active !== false);
+    const activeBarbers = barbers.filter((b) => b.active !== false);
+    const candidateSlots = generateCandidateSlots(dayOfWeek, serviceDurationMinutes);
 
     for (const barber of activeBarbers) {
-      // Check day off
       if (isBarberOnDayOff(barber.id, iso, barberSchedules)) continue;
 
-      // Check if shop is open this day for this barber
-      const funcionamento = getHorarioFuncionamentoDia(iso);
-      if (isSunday && !funcionamento.temIntervalo) {
-        // Sunday - limited hours
-      }
+      for (const slot of candidateSlots) {
+        const slotMinutes = timeToMinutes(slot);
+        const slotEndMinutes = slotMinutes + serviceDurationMinutes;
 
-      // Quick check: is there at least one slot available?
-      const startMinutes = 8 * 60;
-      const endMinutes = funcionamento.fechamentoMinutos;
-
-      for (let m = startMinutes; m < endMinutes; m += 30) {
-        const slotEnd = m + serviceDurationMinutes;
-        if (slotEnd > endMinutes) break;
-
-        // Skip lunch
-        if (funcionamento.temIntervalo && m < 14 * 60 && slotEnd > 12 * 60) continue;
-
-        // Check blocked
-        const blockCheck = isSlotBlocked(barber.id, iso, m, slotEnd, blockedSlots);
+        const blockCheck = isSlotBlocked(barber.id, iso, slotMinutes, slotEndMinutes, blockedSlots);
         if (blockCheck.blocked) continue;
 
-        // Check appointments
         let hasConflict = false;
         for (const apt of appointments) {
           if (apt.date === iso && apt.barberId === barber.id && apt.status !== 'cancelled') {
-            const aptStart = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
+            const aptStart = timeToMinutes(apt.time);
             const aptEnd = aptStart + (apt.totalDurationMinutes || 40);
-            if (m < aptEnd && slotEnd > aptStart) {
+            if (slotMinutes < aptEnd && slotEndMinutes > aptStart) {
               hasConflict = true;
               break;
             }
@@ -242,16 +280,18 @@ export function generateCalendarDays(
 
     days.push({
       iso, dayName, dayNum, monthName, isToday, isSunday,
-      isOpen: true, hasAvailability: hasAnyAvailability
+      isOpen: true, hasAvailability: hasAnyAvailability,
     });
   }
 
   return days;
 }
 
+// ─── Main availability engine ────────────────────────────────────────────────
+
 /**
- * Motor central de cálculo de disponibilidade da Barbearia Mamuty.
- * Utilizado pelo Wizard de agendamento e consultado pelo Funcionário Digital Marcos.
+ * Central availability engine for Barbearia Mamuty.
+ * Used by the Booking Wizard and queried by the Digital Employee Alfred.
  */
 export function consultarDisponibilidade(
   query: DisponibilidadeQuery,
@@ -259,12 +299,13 @@ export function consultarDisponibilidade(
   barbers: Barber[],
   barberSchedules: BarberSchedule[] = [],
   blockedSlots: BlockedSlot[] = [],
-  closedDays: ClosedDay[] = []
+  closedDays: ClosedDay[] = [],
 ): ResultadoDisponibilidade {
   const { data, horarioMinimo = '08:00', barberId, serviceDurationMinutes = 40 } = query;
   const funcionamento = getHorarioFuncionamentoDia(data);
+  const dayOfWeek = new Date(data + 'T12:00:00').getDay() as DayOfWeek;
 
-  // Check if shop is closed
+  // Check if shop is closed on this date
   const shopClosed = isShopClosed(data, closedDays);
   if (shopClosed.closed) {
     return {
@@ -274,85 +315,59 @@ export function consultarDisponibilidade(
       slots: [],
       sugestoesFormatadas: [],
       isClosedDay: true,
-      closedDayReason: shopClosed.reason
+      closedDayReason: shopClosed.reason,
     };
   }
 
-  // Gerar slots de 30 em 30 min desde a abertura até 30 min antes do fechamento
-  const allSlots: string[] = [];
-  const startHour = 8;
-  const maxHour = Math.floor(funcionamento.fechamentoMinutos / 60);
-
-  for (let h = startHour; h < maxHour; h++) {
-    const slot1 = `${h.toString().padStart(2, '0')}:00`;
-    const slot1Min = h * 60;
-    if (slot1Min < funcionamento.fechamentoMinutos) allSlots.push(slot1);
-
-    const slot2 = `${h.toString().padStart(2, '0')}:30`;
-    const slot2Min = h * 60 + 30;
-    if (slot2Min < funcionamento.fechamentoMinutos) allSlots.push(slot2);
+  // Check if salon is open on this day of week
+  if (!isSalonOpen(dayOfWeek)) {
+    return {
+      data,
+      horarioMinimo,
+      funcionamento,
+      slots: [],
+      sugestoesFormatadas: [],
+      isClosedDay: true,
+      closedDayReason: 'Barbearia fechada',
+    };
   }
 
-  const minMinutes = parseInt(horarioMinimo.split(':')[0]) * 60 + parseInt(horarioMinimo.split(':')[1]);
-  const lunchStart = 12 * 60;
-  const lunchEnd = 14 * 60;
+  // Generate candidate slots using the SSoT windows
+  const candidateSlots = generateCandidateSlots(dayOfWeek, serviceDurationMinutes);
+  const minMinutes = timeToMinutes(horarioMinimo);
 
-  const targetBarbers = barberId && barberId !== 'all' && barberId !== 'any'
-    ? barbers.filter(b => b.id === barberId || b.name.toLowerCase() === barberId.toLowerCase())
-    : barbers.filter(b => b.id !== 'any');
+  const targetBarbers =
+    barberId && barberId !== 'all' && barberId !== 'any'
+      ? barbers.filter(
+          (b) => b.id === barberId || b.name.toLowerCase() === barberId.toLowerCase(),
+        )
+      : barbers.filter((b) => b.id !== 'any');
 
   const slots: SlotDisponibilidade[] = [];
   const sugestoesFormatadas: { barberName: string; horario: string }[] = [];
 
-  for (const slot of allSlots) {
-    const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
+  for (const slot of candidateSlots) {
+    const slotMinutes = timeToMinutes(slot);
     const slotEndMinutes = slotMinutes + serviceDurationMinutes;
-
     const isBelowMin = slotMinutes < minMinutes;
 
-    // 1. Regra de Fechamento
-    if (slotEndMinutes > funcionamento.fechamentoMinutos) {
-      slots.push({
-        horario: slot,
-        disponivel: false,
-        motivo: `Ultrapassa fechamento (${funcionamento.fechamento})`,
-        barbeirosDisponiveis: []
-      });
-      continue;
-    }
-
-    // 2. Regra de Intervalo de Almoço
-    if (funcionamento.temIntervalo && slotMinutes < lunchEnd && slotEndMinutes > lunchStart) {
-      slots.push({
-        horario: slot,
-        disponivel: false,
-        motivo: 'Intervalo / Almoço (12h às 14h)',
-        barbeirosDisponiveis: []
-      });
-      continue;
-    }
-
-    // 3. Checar barbeiros livres neste slot
+    // Check barbers for this slot
     const barbeirosDisponiveis: { id: string; name: string }[] = [];
 
     for (const b of targetBarbers) {
-      // 3a. Verificar se barbeiro está de folga
       if (isBarberOnDayOff(b.id, data, barberSchedules)) continue;
 
-      // 3b. Verificar se slot está bloqueado
       const blockCheck = isSlotBlocked(b.id, data, slotMinutes, slotEndMinutes, blockedSlots);
       if (blockCheck.blocked) continue;
 
       let isBusy = false;
-
-      // 3c. Verificar conflito com agendamentos
       for (const apt of appointments) {
         if (
           apt.date === data &&
           (apt.barberId === b.id || apt.barberName.toLowerCase() === b.name.toLowerCase()) &&
           apt.status !== 'cancelled'
         ) {
-          const aptStartMinutes = parseInt(apt.time.split(':')[0]) * 60 + parseInt(apt.time.split(':')[1]);
+          const aptStartMinutes = timeToMinutes(apt.time);
           const aptEndMinutes = aptStartMinutes + (apt.totalDurationMinutes || 40);
 
           if (slotMinutes < aptEndMinutes && slotEndMinutes > aptStartMinutes) {
@@ -373,15 +388,12 @@ export function consultarDisponibilidade(
       horario: slot,
       disponivel,
       motivo: !disponivel ? 'Ocupado por outro atendimento' : undefined,
-      barbeirosDisponiveis
+      barbeirosDisponiveis,
     });
 
     if (disponivel && !isBelowMin) {
       for (const b of barbeirosDisponiveis) {
-        sugestoesFormatadas.push({
-          barberName: b.name,
-          horario: slot
-        });
+        sugestoesFormatadas.push({ barberName: b.name, horario: slot });
       }
     }
   }
@@ -391,6 +403,6 @@ export function consultarDisponibilidade(
     horarioMinimo,
     funcionamento,
     slots,
-    sugestoesFormatadas: sugestoesFormatadas.slice(0, 6)
+    sugestoesFormatadas: sugestoesFormatadas.slice(0, 6),
   };
 }

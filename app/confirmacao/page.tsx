@@ -146,15 +146,19 @@ function ConfirmacaoContent() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-400 mt-0.5">2.</span>
-                <span>Em caso de atraso superior a <strong className="text-white">15 minutos</strong>, o horário poderá ser perdido.</span>
+                <span>Em caso de atraso superior a <strong className="text-white">10 minutos</strong>, o agendamento será encerrado automaticamente.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-400 mt-0.5">3.</span>
-                <span>Para cancelar ou remarcar, entre em contato pelo <strong className="text-white">WhatsApp</strong>.</span>
+                <span>Se não puder comparecer, avise com antecedência. O horário será liberado.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-400 mt-0.5">4.</span>
                 <span>Pagamento pode ser feito em <strong className="text-white">PIX, dinheiro, débito ou crédito</strong>.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">5.</span>
+                <span>Você receberá <strong className="text-white">3 lembretes</strong> antes do seu horário.</span>
               </li>
             </ul>
           </div>
@@ -184,16 +188,16 @@ function ConfirmacaoContent() {
             </div>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-300">
-                <span>Segunda a Sábado</span>
-                <span className="font-bold text-white">08:00 - 20:00</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>Almoço</span>
-                <span className="font-bold text-white">12:00 - 14:00</span>
+                <span>Seg-Sáb</span>
+                <span className="font-bold text-white">08:00–12:00 / 14:00–20:00</span>
               </div>
               <div className="flex justify-between text-slate-300">
                 <span>Domingo</span>
-                <span className="font-bold text-white">08:00 - 12:00</span>
+                <span className="font-bold text-white">08:00–12:00</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Almoço (Seg-Sáb)</span>
+                <span className="font-bold text-white">12:00 - 14:00</span>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { normalizarPhone, extrairPhoneParaBusca, enviarRespostaFuncionario, isZApiConfigured, validarWebhook } from '@/lib/zapi';
+import { enviarMensagemUazapi, isUazapiConfigured } from '@/lib/uazapi';
 import { pensarEResponderMarcos, BrainContext } from '@/lib/ai/brain';
 import { obterOuCriarSessao, logConversation, atualizarSessao } from '@/lib/ai/conversationLog';
 import { Appointment, Barber, Customer, Service } from '@/lib/types';
@@ -386,14 +387,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 16. Enviar resposta via Z-API
-    if (isZApiConfigured()) {
+    // 16. Enviar resposta via Uazapi ou Z-API
+    if (isUazapiConfigured()) {
+      const sendResult = await enviarMensagemUazapi(brainOutput.reply, normalizedPhone);
+      if (!sendResult.success) {
+        console.error('[Webhook] Erro ao enviar resposta via Uazapi:', sendResult.error);
+      }
+    } else if (isZApiConfigured()) {
       const sendResult = await enviarRespostaFuncionario(normalizedPhone, brainOutput);
       if (!sendResult.success) {
-        console.error('[Webhook] Erro ao enviar resposta:', sendResult.error);
+        console.error('[Webhook] Erro ao enviar resposta via Z-API:', sendResult.error);
       }
     } else {
-      console.log('[Webhook] Z-API não configurada. Resposta registrada em log.');
+      console.log('[Webhook] Nenhum provedor WhatsApp configurado. Resposta registrada em log.');
     }
 
     // 17. Responder ao webhook

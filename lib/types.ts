@@ -22,7 +22,7 @@ export interface Barber {
   specialties: string[];
   phone: string;
   bio: string;
-  availableDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  availableDays: number[]; // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
   active?: boolean;
 }
 
@@ -142,6 +142,8 @@ export interface SalonConfig {
   openingHours: string;
   loyaltyStampsGoal: number;
   toleranceMinutes: number;
+  holidaySurcharge?: number;
+  referencePoint?: string;
 }
 
 export interface BarberSchedule {

@@ -12,12 +12,14 @@ import { MAMUTY_KNOWLEDGE_BASE } from './knowledgeBase';
 export type AutomationType =
   | 'LEMBRETE_24H'
   | 'LEMBRETE_2H'
+  | 'LEMBRETE_30MIN'
   | 'POS_ATENDIMENTO'
   | 'AVALIACAO'
   | 'RECUPERACAO_CLIENTE'
   | 'RECUPERACAO_OPORTUNIDADE'
   | 'PREENCHIMENTO_HORARIO'
-  | 'PROMOCAO';
+  | 'PROMOCAO'
+  | 'CANCELAMENTO_AUTOMATICO';
 
 export type AutomationStatus = 'PENDENTE' | 'ENVIADO' | 'CANCELADO' | 'FALHA' | 'AGUARDANDO_APROVACAO';
 
@@ -135,6 +137,38 @@ export const AUTOMATION_RULES: AutomationRule[] = [
       { campo: 'horasAteAgendamento', operador: '<=', valor: 2.5 }
     ],
     acoes: ['ENVIAR_LEMBRETE_2H'],
+    intervaloMinimoDias: 0,
+    maxContatosPeriodo: 1,
+    periodoDias: 1
+  },
+  {
+    id: 'rule-lembrete-30min',
+    tipo: 'LEMBRETE_30MIN',
+    nome: 'Lembrete 30min antes',
+    descricao: 'Envia lembrete 30 minutos antes do agendamento',
+    ativo: true,
+    condicoes: [
+      { campo: 'status', operador: '==', valor: 'confirmed' },
+      { campo: 'minutosAteAgendamento', operador: '>=', valor: 25 },
+      { campo: 'minutosAteAgendamento', operador: '<=', valor: 35 }
+    ],
+    acoes: ['ENVIAR_LEMBRETE_30MIN'],
+    intervaloMinimoDias: 0,
+    maxContatosPeriodo: 1,
+    periodoDias: 1
+  },
+  {
+    id: 'rule-cancelamento-automatico',
+    tipo: 'CANCELAMENTO_AUTOMATICO',
+    nome: 'Cancelamento automático por inatividade',
+    descricao: 'Cancela agendamento após 10 minutos de inatividade do cliente',
+    ativo: true,
+    condicoes: [
+      { campo: 'status', operador: '==', valor: 'confirmed' },
+      { campo: 'minutosDesdeCriacao', operador: '>=', valor: 10 },
+      { campo: 'clienteChegou', operador: '==', valor: false }
+    ],
+    acoes: ['CANCELAR_AGENDAMENTO'],
     intervaloMinimoDias: 0,
     maxContatosPeriodo: 1,
     periodoDias: 1
@@ -350,11 +384,21 @@ export function gerarMensagemLembrete24h(appointment: Appointment): string {
   const servico = appointment.serviceNames?.[0] || 'atendimento';
   const barbeiro = appointment.barberName || 'nosso profissional';
 
-  return `Olá, ${appointment.customerName}! 👋 Passando para lembrar que você tem um horário reservado na Mamuty amanhã às ${appointment.time} com ${barbeiro} para ${servico}. Esperamos você! 💈`;
+  return `Olá! Você agendou um horário conosco, tudo certo! 💈\n\nLembrete: Amanhã às ${appointment.time} você tem *${servico}* com ${barbeiro} na Mamuty Barbearia.\n\n~Mamuty barbearia estilo forte.`;
 }
 
 export function gerarMensagemLembrete2h(appointment: Appointment): string {
-  return `${appointment.customerName}, seu horário na Mamuty está chegando! 💈 Até daqui a pouco. Estamos te esperando!`;
+  const servico = appointment.serviceNames?.[0] || 'atendimento';
+  const barbeiro = appointment.barberName || 'nosso profissional';
+
+  return `Olá! Você agendou um horário conosco, tudo certo! 💈\n\nSeu horário é daqui a 2 horas:\n*${servico}* com ${barbeiro}\nHorário: ${appointment.time}\n\nEstamos te esperando! ~Mamuty barbearia estilo forte.`;
+}
+
+export function gerarMensagemLembrete30min(appointment: Appointment): string {
+  const servico = appointment.serviceNames?.[0] || 'atendimento';
+  const barbeiro = appointment.barberName || 'nosso profissional';
+
+  return `Olá! Você agendou um horário conosco, tudo certo! 💈\n\nFalta apenas 30 minutos!\n*${servico}* com ${barbeiro}\nHorário: ${appointment.time}\n\nChegue com 10 minutos de antecedência. ~Mamuty barbearia estilo forte.`;
 }
 
 export function gerarMensagemPosAtendimento(appointment: Appointment): string {

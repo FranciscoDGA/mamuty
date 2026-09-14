@@ -290,12 +290,14 @@ export function obterEstatisticas(): {
   const porTipo: Record<AutomationType, number> = {
     LEMBRETE_24H: 0,
     LEMBRETE_2H: 0,
+    LEMBRETE_30MIN: 0,
     POS_ATENDIMENTO: 0,
     AVALIACAO: 0,
     RECUPERACAO_CLIENTE: 0,
     RECUPERACAO_OPORTUNIDADE: 0,
     PREENCHIMENTO_HORARIO: 0,
     PROMOCAO: 0,
+    CANCELAMENTO_AUTOMATICO: 0,
   };
 
   automationQueue.forEach(job => {

@@ -52,12 +52,14 @@ export default function AutomacoesPage() {
     const labels: Record<AutomationType, string> = {
       LEMBRETE_24H: 'Lembrete 24h',
       LEMBRETE_2H: 'Lembrete 2h',
+      LEMBRETE_30MIN: 'Lembrete 30min',
       POS_ATENDIMENTO: 'Pos-atendimento',
       AVALIACAO: 'Avaliacao',
       RECUPERACAO_CLIENTE: 'Recuperacao de cliente',
       RECUPERACAO_OPORTUNIDADE: 'Recuperacao de oportunidade',
       PREENCHIMENTO_HORARIO: 'Preenchimento de horario',
-      PROMOCAO: 'Promocao'
+      PROMOCAO: 'Promocao',
+      CANCELAMENTO_AUTOMATICO: 'Cancelamento Automatico'
     };
     return labels[tipo] || tipo;
   };

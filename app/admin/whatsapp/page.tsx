@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { isZApiConfigured, getZApiConfig } from '@/lib/zapi';
+import { isUazapiConfigured, getUazapiConfig } from '@/lib/uazapi';
 import { obterEstatisticasDiarias, obterSessoesAtivas, DailyStats, ConversationSession } from '@/lib/ai/conversationLog';
-import { getZApiConfig as getConfig } from '@/lib/zapi';
 
 export default function WhatsAppMonitorPage() {
   const [stats, setStats] = useState<DailyStats | null>(null);
   const [sessoes, setSessoes] = useState<ConversationSession[]>([]);
   const [zapiConfig, setZapiConfig] = useState<any>(null);
+  const [uazapiConfig, setUazapiConfig] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'status' | 'sessoes' | 'metricas'>('status');
 
@@ -24,6 +25,7 @@ export default function WhatsAppMonitorPage() {
       setStats(statsData);
       setSessoes(obterSessoesAtivas());
       setZapiConfig(getZApiConfig());
+      setUazapiConfig(getUazapiConfig());
       setLastUpdate(new Date().toLocaleTimeString('pt-BR'));
     } catch (e) {
       console.error('Erro ao carregar dados:', e);
@@ -71,13 +73,13 @@ export default function WhatsAppMonitorPage() {
               <div>
                 <p className="text-sm text-gray-500">Funcionário Digital</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {zapiConfig?.configured ? '🟢 Online' : '🟡 Simulado'}
+                  {uazapiConfig?.configured || zapiConfig?.configured ? '🟢 Online' : '🟡 Simulado'}
                 </p>
               </div>
-              <div className={`w-4 h-4 rounded-full ${zapiConfig?.configured ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+              <div className={`w-4 h-4 rounded-full ${uazapiConfig?.configured || zapiConfig?.configured ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              {zapiConfig?.configured ? 'Z-API conectada' : 'Modo simulador'}
+              {uazapiConfig?.configured ? 'Uazapi conectada' : zapiConfig?.configured ? 'Z-API conectada' : 'Modo simulador'}
             </p>
           </div>
 
@@ -146,9 +148,43 @@ export default function WhatsAppMonitorPage() {
         {/* Status Tab */}
         {activeTab === 'status' && (
           <div className="space-y-6">
-            {/* Configuração Z-API */}
+            {/* Configuração WhatsApp (Uazapi & Z-API) */}
             <div className="bg-white rounded-xl shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">📲 Configuração WhatsApp</h3>
+              <h3 className="text-lg font-semibold mb-4">📲 Configuração Uazapi (Recomendado)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Status Uazapi</p>
+                  <p className={`font-bold ${uazapiConfig?.configured ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {uazapiConfig?.configured ? '✅ Conectada' : '⚠️ Não configurada'}
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Sessão / Instância</p>
+                  <p className="font-mono text-sm">{uazapiConfig?.session || 'não configurado'}</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Token & Secret</p>
+                  <p className="font-bold">
+                    {uazapiConfig?.hasToken ? '✅ Token Presente' : '⚠️ Ausente'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-sm text-emerald-900 font-semibold">
+                  Webhook URL da Uazapi:
+                </p>
+                <p className="font-mono text-xs text-emerald-800 bg-white p-2 rounded mt-1 border border-emerald-100 select-all">
+                  {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/uazapi` : '/api/webhooks/uazapi'}
+                </p>
+                <p className="text-xs text-emerald-700 mt-1.5">
+                  👉 Cole esta URL no campo <strong>Webhook</strong> da sua instância na Uazapi marcando o evento <strong>Messages</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Configuração Z-API (Legado) */}
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="text-lg font-semibold mb-4">📲 Configuração Z-API (Alternativo)</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-500">Status Z-API</p>
@@ -167,10 +203,7 @@ export default function WhatsAppMonitorPage() {
               </div>
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Webhook URL:</strong> {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/whatsapp` : '/api/webhooks/whatsapp'}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Configure esta URL no painel da Z-API para receber mensagens
+                  <strong>Webhook URL Z-API:</strong> {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/whatsapp` : '/api/webhooks/whatsapp'}
                 </p>
               </div>
             </div>

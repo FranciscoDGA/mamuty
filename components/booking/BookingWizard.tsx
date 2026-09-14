@@ -245,7 +245,26 @@ export const BookingWizard: React.FC = () => {
 
       router.push(`/confirmacao?${params.toString()}`);
     } catch (err: any) {
-      setSubmitError(err.message || 'Erro ao salvar agendamento.');
+      // Sprint 03: Show specific error messages for different error codes
+      const message = err.message || 'Erro ao salvar agendamento.';
+      if (message.includes('indisponível') || message.includes('CONFLICT')) {
+        setSubmitError('Esse horário acabou de ficar indisponível. Atualizando opções...');
+        // Auto-redirect back to time selection
+        setTimeout(() => {
+          setStep(4);
+          setSubmitError('');
+        }, 2000);
+      } else if (message.includes('fechada') || message.includes('CLOSED')) {
+        setSubmitError('A Mamuty está fechada nesse dia.');
+      } else if (message.includes('intervalo') || message.includes('LUNCH')) {
+        setSubmitError('Nesse horário a Mamuty está fechada para o intervalo. Os atendimentos retornam às 14:00.');
+      } else if (message.includes('ultrapassa') || message.includes('CLOSING')) {
+        setSubmitError('Esse horário ultrapassa o horário de funcionamento.');
+      } else if (message.includes('domingo') || message.includes('SUNDAY')) {
+        setSubmitError('A Mamuty atende aos domingos das 08:00 às 12:00.');
+      } else {
+        setSubmitError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }

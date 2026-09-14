@@ -162,7 +162,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             specialties: b.specialty ? [b.specialty] : ['Degradê', 'Barba', 'Corte Tradicional'],
             phone: '(94) 98443-9065',
             bio: DESC_MAP[b.name] || b.description || '',
-            availableDays: [1,2,3,4,5,6],
+            availableDays: [0,1,2,3,4,5,6],
             active: b.active !== false,
           }))
       );
@@ -365,162 +365,73 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     source?: string;
     paymentMethod?: PaymentMethod;
   }): Promise<Appointment> => {
-    let customerId = '';
     const cleanPhone = apt.customerPhone.replace(/\D/g, '');
     const dateStr = apt.date || new Date().toISOString().split('T')[0];
     const timeStr = apt.time || '10:00';
     const duration = apt.totalDurationMinutes || 40;
-    const isUUID = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
-
-    // 1. Resolver UUID do Barbeiro
-    let finalBarberId = apt.barberId;
-    if (!isUUID(finalBarberId) || finalBarberId === 'any') {
-      const found = barbers.find(b => isUUID(b.id) && (b.id === finalBarberId || b.name.toLowerCase() === apt.barberName?.toLowerCase()));
-      finalBarberId = found ? found.id : barbers.find(b => isUUID(b.id) && b.id !== 'any')?.id;
-    }
-    const finalBarber = barbers.find(b => b.id === finalBarberId) || barbers[0];
-
-    // 2. Resolver UUID do Serviço
-    let finalServiceId = apt.serviceIds?.[0];
-    if (!isUUID(finalServiceId)) {
-      const found = services.find(s => isUUID(s.id) && (s.id === finalServiceId || s.name.toLowerCase() === apt.serviceNames?.[0]?.toLowerCase()));
-      finalServiceId = found ? found.id : services.find(s => isUUID(s.id))?.id;
-    }
-    const finalService = services.find(s => s.id === finalServiceId) || services[0];
-
-    // 3. 🔒 PROTEÇÃO CONTRA DUPLO AGENDAMENTO NO BANCO (CRÍTICO)
-    // Consulta diretamente o Supabase para o barbeiro e data escolhidos
-    if (finalBarberId) {
-      try {
-        const { data: existingSlots, error: chkErr } = await supabase
-          .from('appointments')
-          .select('id, appointment_time, duration_minutes, status')
-          .eq('barber_id', finalBarberId)
-          .eq('appointment_date', dateStr)
-          .not('status', 'eq', 'cancelled');
-
-        if (!chkErr && existingSlots && existingSlots.length > 0) {
-          const reqStart = parseInt(timeStr.split(':')[0]) * 60 + parseInt(timeStr.split(':')[1]);
-          const reqEnd = reqStart + duration;
-
-          for (const ex of existingSlots) {
-            const exTime = ex.appointment_time ? ex.appointment_time.substring(0, 5) : '10:00';
-            const exStart = parseInt(exTime.split(':')[0]) * 60 + parseInt(exTime.split(':')[1]);
-            const exEnd = exStart + (ex.duration_minutes || 40);
-
-            // Se houver sobreposição, recusa o agendamento imediatamente
-            if (reqStart < exEnd && reqEnd > exStart) {
-              throw new Error(`Desculpe! O horário das ${timeStr} com ${finalBarber?.name || 'este profissional'} acabou de ser reservado por outro cliente. Por favor, escolha outro horário.`);
-            }
-          }
-        }
-      } catch (err: any) {
-        if (err.message && err.message.includes('acabou de ser reservado')) {
-          throw err;
-        }
-        console.warn('Nota de verificação de concorrência:', err);
-      }
-    }
-
-    // 4. Salvar ou Recuperar Cliente no Supabase
-    try {
-      const { data: existingCust } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('phone', cleanPhone)
-        .maybeSingle();
-        
-      if (existingCust) {
-        customerId = existingCust.id;
-      } else {
-        const { data: newCust, error: custErr } = await supabase
-          .from('customers')
-          .insert({
-            name: apt.customerName,
-            phone: cleanPhone
-          })
-          .select('id')
-          .single();
-          
-        if (!custErr && newCust) {
-          customerId = newCust.id;
-        }
-      }
-    } catch (err) {
-      console.warn('Nota ao salvar cliente:', err);
-    }
-
-    // 5. Estruturar Metadata em notes (Origem, Pagamento, E-mail)
     const payMethod = apt.paymentMethod || 'pix';
     const src = apt.source || 'site';
-    const notesArr = [
-      `Origem: ${src}`,
-      `Pagamento: ${payMethod.toUpperCase()}`
-    ];
-    if (apt.customerEmail) notesArr.push(`E-mail: ${apt.customerEmail}`);
-    const notesPayload = notesArr.join(' | ');
 
-    // 6. Inserir Agendamento no Supabase
-    let savedId = 'apt-' + Date.now();
+    // Generate idempotency key to prevent double-booking from double-click
+    const idempotencyKey = `bk-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
     try {
-      const appointmentPayload: any = {
-        customer_id: customerId || null,
-        service_id: finalServiceId || null,
-        barber_id: finalBarberId || null,
-        appointment_date: dateStr,
-        appointment_time: (timeStr.length === 5 ? timeStr + ':00' : timeStr),
-        status: 'confirmed',
-        price: apt.totalPrice ?? (finalService ? finalService.price : 40),
-        duration_minutes: duration,
-        notes: notesPayload,
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId: apt.serviceIds?.[0] || '',
+          barberId: apt.barberId || 'any',
+          date: dateStr,
+          time: timeStr,
+          customerName: apt.customerName,
+          customerPhone: cleanPhone,
+          customerEmail: apt.customerEmail,
+          paymentMethod: payMethod,
+          idempotencyKey,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao criar agendamento');
+      }
+
+      const saved = data.appointment;
+
+      // Map API response to local Appointment type
+      const createdApt: Appointment = {
+        id: saved.id,
+        customerName: saved.customer_name || apt.customerName,
+        customerPhone: saved.customer_phone || cleanPhone,
+        customerEmail: saved.customer_email || apt.customerEmail,
+        barberId: saved.barber_id || apt.barberId || '',
+        barberName: saved.barber_name || '',
+        serviceIds: saved.service_ids || (saved.service_id ? [saved.service_id] : []),
+        serviceNames: saved.service_names || [],
+        date: saved.date || saved.appointment_date || dateStr,
+        time: (saved.time || saved.appointment_time || '').substring(0, 5),
+        totalPrice: Number(saved.total_price || saved.price) || 0,
+        totalDurationMinutes: saved.total_duration_minutes || saved.duration_minutes || duration,
+        paymentMethod: saved.payment_method || payMethod,
+        paymentStatus: saved.payment_status || 'pendente',
+        status: saved.status || 'confirmed',
+        notes: saved.notes || '',
+        whatsappNotificationSent: saved.whatsapp_notification_sent || false,
+        createdAt: saved.created_at || new Date().toISOString(),
+        source: saved.source || src,
       };
 
-      const { data: insertedApt, error: aptErr } = await supabase
-        .from('appointments')
-        .insert(appointmentPayload)
-        .select('*')
-        .single();
+      setAppointments(prev => [createdApt, ...prev.filter(a => a.id !== createdApt.id)]);
+      setLatestNewBooking(createdApt);
+      fetchData();
 
-      if (aptErr) {
-        console.error('Erro inserindo agendamento no Supabase:', aptErr);
-      } else if (insertedApt) {
-        savedId = insertedApt.id;
-      }
-    } catch (err) {
-      console.error('Erro ao persistir no Supabase:', err);
+      return createdApt;
+    } catch (err: any) {
+      console.error('[createAppointment] API error:', err);
+      throw err;
     }
-
-    // 7. Criar objeto do agendamento local
-    const createdApt: Appointment = {
-      id: savedId,
-      customerName: apt.customerName,
-      customerPhone: cleanPhone,
-      customerEmail: apt.customerEmail,
-      barberId: finalBarberId || apt.barberId || '',
-      barberName: finalBarber?.name || apt.barberName || '',
-      serviceIds: finalServiceId ? [finalServiceId] : apt.serviceIds || [],
-      serviceNames: finalService?.name ? [finalService.name] : apt.serviceNames || ['Corte'],
-      date: dateStr,
-      time: timeStr,
-      totalPrice: apt.totalPrice ?? (finalService?.price || 40),
-      totalDurationMinutes: duration,
-      paymentMethod: payMethod,
-      paymentStatus: 'pendente',
-      status: 'confirmed',
-      notes: notesPayload,
-      whatsappNotificationSent: false,
-      createdAt: new Date().toISOString(),
-      source: src
-    };
-
-    // 8. Atualizar Estado Local e Acionar Alerta para o Painel Admin
-    setAppointments(prev => [createdApt, ...prev.filter(a => a.id !== savedId)]);
-    setLatestNewBooking(createdApt);
-
-    // Refresh em background
-    fetchData();
-
-    return createdApt;
   };
 
   /**
@@ -528,12 +439,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
    * Ao cancelar, libera o horário imediatamente mantendo o registro no banco.
    */
   const updateAppointmentStatus = async (id: string, status: AppointmentStatus) => {
+    // Optimistic local update
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
 
     try {
-      await supabase.from('appointments').update({ status }).eq('id', id);
+      const response = await fetch(`/api/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.warn('[updateAppointmentStatus] API error:', data.error);
+      }
     } catch (err) {
-      console.warn('Erro ao atualizar status no Supabase:', err);
+      console.warn('Erro ao atualizar status via API:', err);
     }
 
     // Ao concluir, gerar registro financeiro automaticamente
@@ -572,68 +493,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const apt = appointments.find(a => a.id === id);
     if (!apt) return null;
 
-    const newDate = updates.date || apt.date;
-    const newTime = updates.time || apt.time;
-    const newBarberId = updates.barberId || apt.barberId;
-    const duration = updates.totalDurationMinutes || apt.totalDurationMinutes;
+    const phone = apt.customerPhone;
 
-    // Verificar conflito se mudou data, hora ou barbeiro
-    if (updates.date || updates.time || updates.barberId) {
-      try {
-        const { data: existingSlots } = await supabase
-          .from('appointments')
-          .select('id, appointment_time, duration_minutes, status')
-          .eq('barber_id', newBarberId)
-          .eq('appointment_date', newDate)
-          .not('status', 'eq', 'cancelled');
-
-        if (existingSlots && existingSlots.length > 0) {
-          const reqStart = parseInt(newTime.split(':')[0]) * 60 + parseInt(newTime.split(':')[1]);
-          const reqEnd = reqStart + duration;
-
-          for (const ex of existingSlots) {
-            if (ex.id === id) continue;
-            const exTime = ex.appointment_time ? ex.appointment_time.substring(0, 5) : '10:00';
-            const exStart = parseInt(exTime.split(':')[0]) * 60 + parseInt(exTime.split(':')[1]);
-            const exEnd = exStart + (ex.duration_minutes || 40);
-
-            if (reqStart < exEnd && reqEnd > exStart) {
-              throw new Error(`Conflito! O horário das ${newTime} já está reservado para ${apt.barberName} neste dia.`);
-            }
-          }
-        }
-      } catch (err: any) {
-        if (err.message && err.message.includes('Conflito')) {
-          throw err;
-        }
-        console.warn('Nota de verificação de concorrência:', err);
-      }
-    }
-
-    // Montar payload para Supabase
-    const dbPayload: any = {};
-    if (updates.date) dbPayload.appointment_date = updates.date;
-    if (updates.time) dbPayload.appointment_time = (updates.time.length === 5 ? updates.time + ':00' : updates.time);
-    if (updates.barberId) dbPayload.barber_id = updates.barberId;
-    if (updates.status) dbPayload.status = updates.status;
-    if (updates.totalPrice !== undefined) dbPayload.price = updates.totalPrice;
-    if (updates.notes !== undefined) dbPayload.notes = updates.notes;
-
-    // Persistir no Supabase
     try {
-      if (isUUID(id) && Object.keys(dbPayload).length > 0) {
-        await supabase.from('appointments').update(dbPayload).eq('id', id);
+      // Determine the action based on what changed
+      if (updates.date || updates.time) {
+        // Reschedule
+        const response = await fetch(`/api/bookings/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: updates.date || apt.date,
+            time: updates.time || apt.time,
+            barberId: updates.barberId || apt.barberId,
+            phone,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro ao remarcar agendamento');
+        }
+
+        const merged = { ...apt, ...updates };
+        setAppointments(prev => prev.map(a => a.id === id ? merged : a));
+        await fetchData();
+        return merged;
       }
-    } catch (err) {
-      console.warn('Erro ao atualizar agendamento no Supabase:', err);
+
+      if (updates.barberId && updates.barberId !== apt.barberId) {
+        // Change barber
+        const response = await fetch(`/api/bookings/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barberId: updates.barberId,
+            phone,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro ao trocar profissional');
+        }
+
+        const merged = { ...apt, ...updates };
+        setAppointments(prev => prev.map(a => a.id === id ? merged : a));
+        await fetchData();
+        return merged;
+      }
+
+      // Generic update (status, notes, etc.)
+      const response = await fetch(`/api/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...updates, phone }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.warn('[updateAppointment] API error:', data.error);
+      }
+
+      const merged = { ...apt, ...updates };
+      setAppointments(prev => prev.map(a => a.id === id ? merged : a));
+      await fetchData();
+      return merged;
+    } catch (err: any) {
+      console.error('[updateAppointment] Error:', err);
+      throw err;
     }
-
-    // Atualizar estado local
-    const merged = { ...apt, ...updates };
-    setAppointments(prev => prev.map(a => a.id === id ? merged : a));
-    await fetchData();
-
-    return merged;
   };
 
   /**
@@ -719,8 +648,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteAppointment = async (id: string) => {
-    // Mantém regra da Sprint: cancelar em vez de sumir com o histórico
-    await updateAppointmentStatus(id, 'cancelled');
+    // Sprint 03: Use DELETE API endpoint
+    try {
+      const response = await fetch(`/api/bookings/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.warn('[deleteAppointment] API error:', data.error);
+      }
+    } catch (err) {
+      console.warn('[deleteAppointment] API call failed, falling back to status update:', err);
+      // Fallback to status update if DELETE fails
+      await updateAppointmentStatus(id, 'cancelled');
+      return;
+    }
+
+    // Optimistic local update
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' as AppointmentStatus } : a));
+    await fetchData();
   };
 
   const resetAllData = () => {

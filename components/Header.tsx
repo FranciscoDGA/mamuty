@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { PWAInstallButton } from '@/components/PWAInstallButton';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   Scissors,
   ShieldCheck,
@@ -158,6 +159,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
 
         {/* Desktop Right Actions */}
         <div className="hidden md:flex items-center gap-2">
+          <NotificationBell />
           <PWAInstallButton />
 
           {currentCustomer && (
@@ -182,8 +184,9 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
           )}
         </div>
 
-        {/* Mobile Hamburger Button */}
+        {/* Mobile Actions */}
         <div className="flex md:hidden items-center gap-2">
+          <NotificationBell variant="mobile" />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 hover:text-amber-400 hover:border-slate-700 transition focus:outline-hidden"
@@ -476,7 +479,7 @@ export const Header: React.FC<{ onOpenUserSwitcher?: () => void }> = ({ onOpenUs
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>{salonConfig.openingHours || 'Segunda a Sábado: 09:00 às 20:30'}</span>
+                <span>{salonConfig.openingHours || 'Seg-Sáb: 08:00–12:00 / 14:00–20:00 | Dom: 08:00–12:00'}</span>
               </div>
               <a
                 href={`https://wa.me/${(salonConfig.whatsappNumber || '5511987654321').replace(/\D/g, '')}`}

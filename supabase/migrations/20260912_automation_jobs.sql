@@ -18,13 +18,15 @@ CREATE TABLE IF NOT EXISTS automation_jobs (
   meta JSONB DEFAULT '{}'
 );
 
--- Índices para queries comuns
+-- Índices
 CREATE INDEX IF NOT EXISTS idx_automation_jobs_status ON automation_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_automation_jobs_agendado ON automation_jobs(agendado_para);
 CREATE INDEX IF NOT EXISTS idx_automation_jobs_tipo ON automation_jobs(tipo);
 
--- RLS (apenas service role acessa, mas client-side usa anon com policy aberta para debug)
+-- RLS
 ALTER TABLE automation_jobs ENABLE ROW LEVEL SECURITY;
 
+-- CORREÇÃO: DROP IF EXISTS antes de CREATE
+DROP POLICY IF EXISTS "Allow all for authenticated" ON automation_jobs;
 CREATE POLICY "Allow all for authenticated" ON automation_jobs
   FOR ALL USING (true) WITH CHECK (true);

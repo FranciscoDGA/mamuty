@@ -6,49 +6,51 @@ export const INITIAL_SALON_CONFIG: SalonConfig = {
   address: 'Cumaru do Norte - PA, CEP 68398-000, Brasil',
   phone: '(94) 98443-9065',
   whatsappNumber: '5594984439065',
-  pixKey: 'hemersonpbarber@gmail.com',
-  pixKeyType: 'E-mail',
-  pixBeneficiary: 'Mamuty Barbearia (Hemerson Barber)',
+  pixKey: 'hermersonpbarber@gmail.com',
+  pixKeyType: 'CNPJ',
+  pixBeneficiary: 'Hermerson Pereira Barros - CNPJ 56.605.888/0001-40',
   pixCity: 'CUMARU DO NORTE',
   instagram: '@mamutybarbearia',
-  openingHours: 'Segunda a Sábado: Somente com hora marcada',
+  openingHours: 'Seg-Sáb: 08:00–12:00 / 14:00–20:00 | Dom: 08:00–12:00',
   loyaltyStampsGoal: 10,
-  toleranceMinutes: 15,
+  toleranceMinutes: 10,
+  holidaySurcharge: 0.10,
+  referencePoint: 'Posto de Gasolina - Cumaru',
 };
 
 export const INITIAL_SERVICES: Service[] = [
   { id: 'srv-1', name: 'Corte social', category: 'cabelo', description: 'Corte masculino tradicional com alinhamento na tesoura ou máquina.', price: 40, durationMinutes: 30, pointsReward: 40, popular: true },
   { id: 'srv-2', name: 'Corte degradê', category: 'cabelo', description: 'Degradê milimétrico na régua (Low, Mid ou High Fade).', price: 40, durationMinutes: 40, pointsReward: 40, popular: true },
-  { id: 'srv-3', name: 'Barba simples', category: 'barba', description: 'Alinhamento e desenho de barba com toalha e navalha.', price: 35, durationMinutes: 30, pointsReward: 35 },
-  { id: 'srv-4', name: 'Cabelo + Barba', category: 'combos', description: 'Combo completo de corte degradê ou tradicional + barba alinhada.', price: 70, durationMinutes: 50, pointsReward: 70, popular: true },
-  { id: 'srv-5', name: 'Cabelo + Sobrancelha', category: 'combos', description: 'Corte de cabelo completo com alinhamento e limpeza de sobrancelha.', price: 60, durationMinutes: 45, pointsReward: 60 },
-  { id: 'srv-6', name: 'Combo Completo', category: 'combos', description: 'Corte completo, barba na toalha quente, sobrancelha e finalização.', price: 100, durationMinutes: 60, pointsReward: 100, popular: true }
+  { id: 'srv-3', name: 'Barba simples', category: 'barba', description: 'Alinhamento e desenho de barba com toalha e navalha.', price: 35, durationMinutes: 30, pointsReward: 35, popular: false },
+  { id: 'srv-4', name: 'Cabelo + Barba', category: 'combos', description: 'Combo completo de corte degradê ou tradicional + barba alinhada.', price: 70, durationMinutes: 50, pointsReward: 70, popular: false },
+  { id: 'srv-5', name: 'Cabelo + Sobrancelha', category: 'combos', description: 'Corte de cabelo completo com alinhamento e limpeza de sobrancelha.', price: 60, durationMinutes: 45, pointsReward: 60, popular: false },
+  { id: 'srv-6', name: 'Combo Completo', category: 'combos', description: 'Corte completo, barba na toalha quente, sobrancelha e finalização. CARRO-CHEFE!', price: 100, durationMinutes: 60, pointsReward: 100, popular: true }
 ];
 
 export const INITIAL_BARBERS: Barber[] = [
   { 
     id: 'barber-1', 
     name: 'Hemerson', 
-    role: 'Fundador & Barbeiro Chefe', 
+    role: 'Especialista em Todos os Cortes, Produtos e/ou Serviços', 
     avatarUrl: '/barber-hemerson.jpg', 
     rating: 5.0, 
     reviewsCount: 148, 
-    specialties: ['Corte de cabelo degradê', 'Tesoura', 'Barba', 'Kids'], 
+    specialties: ['Degradê milimétrico', 'Cortes Clássicos', 'Tesoura', 'Barba', 'Atendimento Kids', 'Todos os Serviços'], 
     phone: '(94) 98443-9065', 
-    bio: 'Fundador da Mamuty Barbearia. Estilo forte, pontualidade britânica e atendimento dedicado a adultos e kids.', 
-    availableDays: [1,2,3,4,5,6] 
+    bio: 'Fundador da Mamuty Barbearia. Especialista em todos os cortes, produtos e serviços. Estilo forte, pontualidade britânica e atendimento dedicado a adultos, mulheres e kids.', 
+    availableDays: [0,1,2,3,4,5,6] 
   },
   { 
     id: 'barber-2', 
     name: 'Douglas', 
-    role: 'Especialista em Degradê & Barba', 
+    role: 'Especialista em Cortes Sociais', 
     avatarUrl: '/barber-douglas.jpg', 
     rating: 4.9, 
     reviewsCount: 112, 
-    specialties: ['Corte de cabelo degradê', 'Fade Navalhado', 'Barboterapia', 'Pezinho'], 
+    specialties: ['Corte Social', 'Degradê', 'Barba', 'Pezinho'], 
     phone: '(94) 98443-9065', 
-    bio: 'Precisão milimétrica e acabamento na régua.', 
-    availableDays: [1,2,3,4,5,6] 
+    bio: 'Especialista em Cortes Sociais. Precisão e acabamento impecável.', 
+    availableDays: [0,1,2,3,4,5,6] 
   },
 ];
 

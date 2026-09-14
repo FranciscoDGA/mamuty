@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { enviarRespostaFuncionario, isZApiConfigured } from '@/lib/zapi';
+import { enviarMensagemUazapi, isUazapiConfigured } from '@/lib/uazapi';
 
 export interface ReminderResult {
   sent: number;
@@ -19,8 +20,8 @@ export interface ReminderResult {
 export async function sendReminders(): Promise<ReminderResult> {
   const result: ReminderResult = { sent: 0, failed: 0, errors: [] };
 
-  if (!isZApiConfigured()) {
-    result.errors.push('Z-API não configurada');
+  if (!isZApiConfigured() && !isUazapiConfigured()) {
+    result.errors.push('Nenhum provedor WhatsApp (Uazapi ou Z-API) configurado');
     return result;
   }
 
@@ -102,10 +103,14 @@ export async function sendReminders(): Promise<ReminderResult> {
         `Te esperamos! Qualquer dúvida, é só chamar. 😊`;
 
       try {
-        await enviarRespostaFuncionario(apt.customer_phone, {
-          reply: message,
-          intent: 'REMINDER'
-        });
+        if (isUazapiConfigured()) {
+          await enviarMensagemUazapi(message, apt.customer_phone);
+        } else {
+          await enviarRespostaFuncionario(apt.customer_phone, {
+            reply: message,
+            intent: 'REMINDER'
+          });
+        }
 
         // Marcar como enviado
         await supabase

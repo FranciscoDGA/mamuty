@@ -26,14 +26,14 @@ export function consultar_funcionamento(dataIso?: string): string {
   const info = getHorarioFuncionamentoDia(targetDate);
 
   let texto = `Sim! Estamos funcionando hoje (${info.diaSemana}). 💈\n\n`;
-  texto += `⏰ *Horário de hoje:* 08:00 às ${info.fechamento}\n`;
+  texto += `⏰ *Horário de hoje:* ${info.abertura} às ${info.fechamento}\n`;
   if (info.temIntervalo) {
     texto += `🔒 *Intervalo de almoço:* 12:00 às 14:00\n`;
   }
   texto += `\n*Funcionamento semanal:*\n`;
-  texto += `• Segunda a Sábado: até 20:00 (Terça até 18:00)\n`;
-  texto += `• Domingo: 08:00 às 12:00\n`;
-  texto += `• Intervalo: 12h às 14h\n\n`;
+  texto += `• Seg-Sáb: 08:00–12:00 / 14:00–20:00\n`;
+  texto += `• Domingo: 08:00–12:00 (fechado à tarde)\n`;
+  texto += `• Intervalo (Seg-Sáb): 12h às 14h\n\n`;
   texto += `Posso verificar os horários disponíveis para você agora! 👇`;
 
   return texto;
