@@ -225,7 +225,7 @@ export default function WhatsAppMonitorPage() {
                 </div>
                 <span className="text-gray-400">→</span>
                 <div className="p-3 bg-purple-100 rounded-lg text-purple-800 font-medium">
-                  🤖 Marcos
+                  🤖 Alfred (Gemini AI)
                 </div>
                 <span className="text-gray-400">→</span>
                 <div className="p-3 bg-orange-100 rounded-lg text-orange-800 font-medium">

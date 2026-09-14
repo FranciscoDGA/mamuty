@@ -67,14 +67,14 @@ export default function WhatsAppSimulationPage() {
       {
         id: 'msg-init-1',
         sender: 'marcos',
-        text: `Fala, tudo bem? 👋 Sou o *Marcos*, assistente digital da *Barbearia Mamuty*!\n\nEstou aqui para tirar dúvidas sobre serviços, preços e horários, além de garantir seu agendamento sem fila de espera.\n\nComo posso te ajudar hoje? 💈`,
+        text: `Fala, tudo bem? 👋 Sou o *Alfred*, assistente digital da *Barbearia Mamuty*!\n\nEstou aqui para tirar dúvidas sobre serviços, preços e horários, além de garantir seu agendamento sem fila de espera.\n\nComo posso te ajudar hoje? 💈`,
         timestamp: timeStr,
         intent: 'SAUDACAO',
         quickReplies: [
-          { label: 'Quero agendar', action: 'INICIAR_AGENDAMENTO' },
-          { label: 'Tem vaga hoje?', action: 'VER_HORARIOS_HOJE' },
-          { label: 'Quanto custa o degradê?', action: 'MENSAGEM_TEXTO', payload: { text: 'Quanto custa o degradê?' } },
-          { label: 'Vocês estão abertos hoje?', action: 'VER_FUNCIONAMENTO' }
+          { label: 'Quero agendar', action: 'MENSAGEM_TEXTO', payload: { text: 'Quero agendar um horário' } },
+          { label: 'Tem vaga hoje?', action: 'MENSAGEM_TEXTO', payload: { text: 'Tem vaga hoje?' } },
+          { label: 'Quanto custa o degradê?', action: 'MENSAGEM_TEXTO', payload: { text: 'Quanto custa o corte degradê?' } },
+          { label: 'Vocês estão abertos hoje?', action: 'MENSAGEM_TEXTO', payload: { text: 'Vocês estão abertos hoje?' } }
         ]
       }
     ]);
@@ -102,92 +102,87 @@ export default function WhatsAppSimulationPage() {
 
     setTimeout(async () => {
       try {
-        if (actionPayload?.action && actionPayload.action !== 'MENSAGEM_TEXTO') {
-          const result = processUserMessage(
-            text,
-            {
-              services,
-              barbers,
-              appointments,
-              currentCustomer,
-              step: dialogStep,
-              draft: bookingDraft
-            },
-            actionPayload
-          );
-
-          if (result.actionToExecute?.type === 'CREATE_APPOINTMENT') {
-            try {
-              await createAppointment(result.actionToExecute.payload);
-            } catch (err: any) {
-              result.reply.text = `⚠️ Ops! ${err.message || 'Houve um erro ao agendar.'}`;
-            }
-          } else if (result.actionToExecute?.type === 'CANCEL_APPOINTMENT') {
-            try {
-              await updateAppointmentStatus(result.actionToExecute.payload.id, 'cancelled');
-            } catch (err: any) {
-              console.error('Erro ao cancelar:', err);
-            }
-          }
-
-          setDialogStep(result.nextStep);
-          setBookingDraft(result.nextDraft);
-          setMessages(prev => [...prev, result.reply]);
-          return;
-        }
+        const queryText = text || actionPayload?.payload?.text || '';
 
         const history = messages.map(m => ({
           role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
           content: m.text
         }));
 
-        const brainOutput = await pensarEResponderMarcos(text || actionPayload?.payload?.text || '', {
-          services,
-          barbers,
-          appointments,
-          currentCustomer,
-          conversationHistory: history,
-          activeDraft: bookingDraft
-        });
+        let replyText = '';
+        let quickRepliesList: any[] = [];
 
-        if (brainOutput.intent === 'HUMANO' || brainOutput.intent === 'SERVICO_NAO_LISTADO') {
-          setHumanHandoffAlert('Atendimento humano solicitado. Link direto para o WhatsApp do Hemerson ativado.');
+        // 1. Tenta chamar o cérebro real do Alfred via Gemini AI
+        try {
+          const alfredRes = await fetch('/api/alfred', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: queryText,
+              history: history.slice(-10),
+              services: services.map(s => ({ id: s.id, name: s.name, price: s.price, duration: s.durationMinutes })),
+              barbers: barbers.map(b => ({ id: b.id, name: b.name, specialties: b.specialties })),
+              appointments: appointments.map(a => ({ id: a.id, barberId: a.barberId, date: a.date, time: a.time, status: a.status })),
+              customer: currentCustomer ? { id: currentCustomer.id, name: currentCustomer.name, email: currentCustomer.email } : null,
+            }),
+          });
+
+          if (alfredRes.ok) {
+            const alfredData = await alfredRes.json();
+            if (alfredData?.reply) {
+              replyText = alfredData.reply;
+            }
+          }
+        } catch (e) {
+          console.warn('[WhatsApp] Erro ao chamar /api/alfred:', e);
         }
 
-        if (brainOutput.newDraftState) {
-          setBookingDraft(prev => ({ ...prev, ...brainOutput.newDraftState }));
+        // 2. Fallback de regras caso a API não responda
+        if (!replyText) {
+          const brainOutput = await pensarEResponderMarcos(queryText, {
+            services,
+            barbers,
+            appointments,
+            currentCustomer,
+            conversationHistory: history,
+            activeDraft: bookingDraft
+          });
+          replyText = brainOutput.reply;
+          quickRepliesList = brainOutput.quickReplies || [];
         }
 
-        if (brainOutput.actionToExecute?.type === 'CANCEL_APPOINTMENT') {
-          await updateAppointmentStatus(brainOutput.actionToExecute.payload.id, 'cancelled');
+        if (replyText.toLowerCase().includes('hemerson') && replyText.toLowerCase().includes('whatsapp')) {
+          setHumanHandoffAlert('Atendimento com o Hemerson Barber disponível.');
         }
 
-        const marcosMsg: ChatMessage = {
-          id: 'marcos-' + Date.now(),
+        const alfredMsg: ChatMessage = {
+          id: 'alfred-' + Date.now(),
           sender: 'marcos',
-          text: brainOutput.reply,
+          text: replyText,
           timestamp: timeStr,
-          intent: brainOutput.intent as any,
-          quickReplies: brainOutput.quickReplies,
-          component: brainOutput.component as any,
-          payload: brainOutput.componentData
+          intent: 'GREETING' as any,
+          quickReplies: quickRepliesList.length > 0 ? quickRepliesList : [
+            { label: 'Quero agendar', action: 'MENSAGEM_TEXTO', payload: { text: 'Quero agendar agora' } },
+            { label: 'Ver preços', action: 'MENSAGEM_TEXTO', payload: { text: 'Quais são os serviços e preços?' } },
+            { label: 'Ver horários', action: 'MENSAGEM_TEXTO', payload: { text: 'Quais os horários disponíveis?' } }
+          ]
         };
 
-        setMessages(prev => [...prev, marcosMsg]);
+        setMessages(prev => [...prev, alfredMsg]);
       } catch (err: any) {
         setMessages(prev => [
           ...prev,
           {
             id: 'err-' + Date.now(),
             sender: 'marcos',
-            text: 'Desculpe, tive uma oscilação momentânea. Por favor, tente novamente.',
+            text: 'Tive uma oscilação na conexão. Você pode agendar direto pelo link: https://mamuty.vercel.app/agendar',
             timestamp: timeStr
           }
         ]);
       } finally {
         setIsTyping(false);
       }
-    }, 450);
+    }, 400);
   };
 
   const handleQuickActionClick = (action: string, payload?: any, label?: string) => {
@@ -230,14 +225,14 @@ export default function WhatsAppSimulationPage() {
 
           <div className="relative">
             <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-amber-500/50 bg-slate-900 shadow-lg shadow-amber-500/10">
-              <img src="/marcos-avatar.jpg" alt="Marcos - Assistente Digital" className="w-full h-full object-cover" />
+              <img src="/marcos-avatar.jpg" alt="Alfred - Assistente Digital" className="w-full h-full object-cover" />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#111827] rounded-full shadow-sm"></span>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-white text-sm sm:text-base tracking-tight">Marcos</h1>
+              <h1 className="font-bold text-white text-sm sm:text-base tracking-tight">Alfred</h1>
               <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold tracking-wide uppercase">
                 Assistente Digital
               </span>
@@ -315,7 +310,7 @@ export default function WhatsAppSimulationPage() {
         
         <div className="flex justify-center">
           <span className="bg-slate-800/60 text-slate-400 text-[10px] font-medium px-4 py-1.5 rounded-full border border-slate-700/50 text-center shadow-sm">
-            🧠 Cérebro do Marcos ativo
+            🧠 Cérebro do Alfred (Gemini AI) ativo
           </span>
         </div>
 

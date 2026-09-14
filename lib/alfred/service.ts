@@ -8,7 +8,11 @@ import {
   AlfredToolContext
 } from './tools';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
+function getGenAI() {
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+}
 
 export interface AlfredMessage {
   role: 'user' | 'assistant';
@@ -292,8 +296,9 @@ export async function alfredChat(
   ];
 
     try {
-    let response = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+    const ai = getGenAI();
+    let response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
       contents,
       config: {
         systemInstruction: systemPrompt,
@@ -326,8 +331,8 @@ export async function alfredChat(
       contents.push({ role: 'model' as const, parts: [{ text: JSON.stringify(functionCalls) }] });
       contents.push({ role: 'user' as const, parts: toolResponses as any });
 
-      response = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash',
+      response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
         contents,
         config: {
           systemInstruction: systemPrompt,

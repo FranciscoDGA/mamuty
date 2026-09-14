@@ -583,8 +583,8 @@ export async function pensarEResponderMarcos(
   }
 
   // SELECT_BARBER — Escolher profissional
-  if (norm.includes('mamuty') || norm.includes('hemerson')) {
-    const barber = context.barbers.find(b => b.name.toLowerCase().includes('mamuty')) || context.barbers[0];
+  if (norm.includes('hemerson') || norm.includes('com o dono') || norm.includes('barber-1')) {
+    const barber = context.barbers.find(b => b.name.toLowerCase().includes('hemerson')) || context.barbers[0];
     return {
       reply: `Perfeito, com o *${barber.name}*! 👊\n\nPara qual dia?`,
       intent: 'SELECT_BARBER',
@@ -597,8 +597,8 @@ export async function pensarEResponderMarcos(
     };
   }
 
-  if (norm.includes('doglas')) {
-    const barber = context.barbers.find(b => b.name === 'Douglas') || context.barbers[1];
+  if (norm.includes('douglas') || norm.includes('doglas') || norm.includes('barber-2')) {
+    const barber = context.barbers.find(b => b.name.toLowerCase().includes('douglas')) || context.barbers[1] || context.barbers[0];
     return {
       reply: `Beleza, com o *${barber.name}*! 💈\n\nPara qual dia?`,
       intent: 'SELECT_BARBER',
@@ -878,7 +878,7 @@ export async function pensarEResponderMarcos(
     norm === 'oi' || norm === 'ola' || norm === 'opa' || norm.startsWith('bom dia') || norm.startsWith('boa tarde') || norm.startsWith('boa noite') || norm === 'e ai' || norm === 'eai'
   ) {
     return {
-      reply: `Fala! 👊 Sou o *Marcos*, assistente da *Mamuty Barbearia*.\n\nComo posso te ajudar? 💈`,
+      reply: `Fala! 👊 Sou o *Alfred*, assistente da *Mamuty Barbearia*.\n\nComo posso te ajudar? 💈`,
       intent: 'GREETING',
       quickReplies: [
         { label: 'Quero agendar', action: 'START_BOOKING' },
@@ -927,7 +927,7 @@ export async function pensarEResponderMarcos(
   }
   
   return {
-    reply: `Fala, tudo bem? Sou o *Marcos*, assistente da *Mamuty Barbearia*! 💈\n\nPosso te ajudar a agendar, consultar preços ou ver horários.\n\nO que você precisa?`,
+    reply: `Fala, tudo bem? Sou o *Alfred*, assistente da *Mamuty Barbearia*! 💈\n\nPosso te ajudar a agendar, consultar preços ou ver horários.\n\nO que você precisa?`,
     intent: 'UNKNOWN',
     leadStatus: classificacaoLead.status,
     intencao: intencaoFinal,

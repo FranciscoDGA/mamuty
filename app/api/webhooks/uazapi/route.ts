@@ -6,6 +6,7 @@ import {
   normalizarTelefoneUazapi,
   validarWebhookUazapi,
 } from '@/lib/uazapi';
+import { alfredChat } from '@/lib/alfred/service';
 import { pensarEResponderMarcos, BrainContext } from '@/lib/ai/brain';
 import { obterOuCriarSessao, logConversation, atualizarSessao } from '@/lib/ai/conversationLog';
 import { Appointment, Barber, Customer, Service } from '@/lib/types';
@@ -294,40 +295,64 @@ export async function POST(request: NextRequest) {
       console.warn('[Webhook Uazapi] Erro ao buscar agendamentos:', e);
     }
 
-    // 7. Cérebro do Atendente Marcos
-    const brainContext: BrainContext = {
-      services,
-      barbers,
-      appointments,
-      currentCustomer: contextoCliente.currentCustomer,
-      conversationHistory: contextoCliente.conversationHistory,
-      activeDraft: contextoCliente.activeDraft,
-    };
+    // 7. Cérebro do Atendente Alfred (Gemini AI com ferramentas)
+    let replyText = '';
+    let intentDetected = 'AI_CHAT';
 
-    let brainOutput;
     try {
-      brainOutput = await pensarEResponderMarcos(messageBody, brainContext);
-    } catch (error: any) {
-      console.error('[Webhook Uazapi] Erro no Brain:', error);
-      brainOutput = {
-        reply:
-          'Olá! Tive uma oscilação momentânea aqui no sistema, mas você pode agendar diretamente pelo nosso site: https://mamuty.vercel.app/agendar ou falar direto com o Hemerson.',
-        intent: 'AI_FALLBACK',
+      if (process.env.GEMINI_API_KEY) {
+        const alfredResult = await alfredChat(messageBody, {
+          services,
+          barbers,
+          appointments,
+          currentCustomer: contextoCliente.currentCustomer,
+          conversationHistory: contextoCliente.conversationHistory.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        });
+
+        if (alfredResult?.reply) {
+          replyText = alfredResult.reply;
+          intentDetected = alfredResult.toolUsed || 'GEMINI_ALFRED';
+        }
+      }
+    } catch (geminiErr) {
+      console.warn('[Webhook Uazapi] Erro ao chamar Alfred Gemini:', geminiErr);
+    }
+
+    // Fallback inteligente
+    if (!replyText) {
+      const brainContext: BrainContext = {
+        services,
+        barbers,
+        appointments,
+        currentCustomer: contextoCliente.currentCustomer,
+        conversationHistory: contextoCliente.conversationHistory,
+        activeDraft: contextoCliente.activeDraft,
       };
+
+      try {
+        const brainOutput = await pensarEResponderMarcos(messageBody, brainContext);
+        replyText = brainOutput.reply;
+        intentDetected = brainOutput.intent;
+        if (brainOutput.newDraftState) {
+          contextoCliente.activeDraft = {
+            ...contextoCliente.activeDraft,
+            ...brainOutput.newDraftState,
+          };
+        }
+      } catch {
+        replyText =
+          'Olá! Sou o Alfred da Barbearia Mamuty. Você pode tirar dúvidas sobre serviços ou agendar diretamente pelo link: https://mamuty.vercel.app/agendar';
+      }
     }
 
     // 8. Atualizar contexto da conversa
     contextoCliente.conversationHistory.push({
       role: 'assistant',
-      content: brainOutput.reply,
+      content: replyText,
     });
-
-    if (brainOutput.newDraftState) {
-      contextoCliente.activeDraft = {
-        ...contextoCliente.activeDraft,
-        ...brainOutput.newDraftState,
-      };
-    }
 
     clienteContexto.set(cleanPhone, contextoCliente);
 
@@ -337,88 +362,25 @@ export async function POST(request: NextRequest) {
       clientPhone: cleanPhone,
       clientName: cliente?.name || pushName,
       direction: 'outgoing',
-      message: brainOutput.reply,
-      intent: brainOutput.intent,
-      toolUsed: brainOutput.toolUsed,
-      action: brainOutput.actionToExecute?.type,
+      message: replyText,
+      intent: intentDetected,
+      toolUsed: intentDetected,
       status: 'success',
       responseTimeMs: responseTime,
-      metadata: {
-        leadStatus: brainOutput.leadStatus,
-      },
     });
 
     atualizarSessao(cleanPhone, {
-      intents: [...(sessao.intents || []), brainOutput.intent],
+      intents: [...(sessao.intents || []), intentDetected],
       context: contextoCliente.activeDraft,
     });
 
-    // 10. Executar ações solicitadas pelo cérebro (criar/cancelar)
-    if (brainOutput.actionToExecute) {
-      try {
-        if (brainOutput.actionToExecute.type === 'CREATE_APPOINTMENT') {
-          const payload = brainOutput.actionToExecute.payload;
-          const { data: newAppointment, error } = await supabase
-            .from('appointments')
-            .insert({
-              customer_name: payload.customerName,
-              customer_phone: payload.customerPhone,
-              customer_email: payload.customerEmail,
-              barber_id: payload.barberId,
-              barber_name: payload.barberName,
-              service_ids: payload.serviceIds,
-              service_names: payload.serviceNames,
-              date: payload.date,
-              time: payload.time,
-              total_price: payload.totalPrice,
-              total_duration_minutes: payload.totalDurationMinutes,
-              payment_method: payload.paymentMethod,
-              payment_status: 'pendente',
-              source: 'whatsapp_uazapi',
-              status: 'confirmed',
-              whatsapp_notification_sent: true,
-            })
-            .select()
-            .single();
-
-          if (!error && newAppointment) {
-            const aptForAutomation: Appointment = {
-              id: newAppointment.id,
-              customerName: newAppointment.customer_name,
-              customerPhone: newAppointment.customer_phone,
-              customerEmail: newAppointment.customer_email || '',
-              serviceIds: newAppointment.service_ids || [],
-              serviceNames: newAppointment.service_names || [],
-              barberId: newAppointment.barber_id,
-              barberName: newAppointment.barber_name,
-              date: newAppointment.date,
-              time: newAppointment.time,
-              totalPrice: Number(newAppointment.total_price),
-              totalDurationMinutes: newAppointment.total_duration_minutes,
-              paymentMethod: newAppointment.payment_method,
-              paymentStatus: newAppointment.payment_status,
-              status: 'confirmed',
-              whatsappNotificationSent: true,
-              createdAt: newAppointment.created_at,
-              notes: '',
-              source: 'whatsapp_uazapi',
-            };
-            const jobs = processarNovoAgendamento(aptForAutomation, []);
-            if (jobs.length > 0) await adicionarJobs(jobs);
-          }
-        }
-      } catch (actionErr) {
-        console.error('[Webhook Uazapi] Erro ao executar ação:', actionErr);
-      }
-    }
-
-    // 11. Disparar resposta ao cliente via Uazapi
-    const sendResult = await enviarMensagemUazapi(brainOutput.reply, cleanPhone);
+    // 10. Disparar resposta ao cliente via Uazapi
+    const sendResult = await enviarMensagemUazapi(replyText, cleanPhone);
 
     return NextResponse.json({
       ok: true,
       sent: sendResult.success,
-      replyPreview: brainOutput.reply.substring(0, 50) + '...',
+      replyPreview: replyText.substring(0, 50) + '...',
       responseTimeMs: responseTime,
     });
   } catch (err: any) {
