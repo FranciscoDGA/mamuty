@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createBooking, type BookingInput } from '@/lib/booking/service';
 import { checkApiRateLimit } from '@/lib/rateLimit';
+import { enviarMensagemUazapi } from '@/lib/uazapi';
 
 // ─── POST: Create Booking ────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Disparar Web Push
+      // 1. Disparar Web Push para o dono/barbeiros
       const pushTitle = 'Novo Agendamento! 🎉';
       const pushBody = `${result.appointment.customer_name} agendou para ${result.appointment.date.split('-').reverse().join('/')} às ${result.appointment.time}`;
       await fetch(new URL(request.url).origin + '/api/push/notify', {
@@ -64,8 +65,17 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: pushTitle, body: pushBody, url: '/admin' })
       });
+
+      // 2. Disparar WhatsApp para o cliente confirmando o agendamento e avisando da tolerância
+      if (result.appointment.customer_phone) {
+        const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
+        await enviarMensagemUazapi(msgCliente, result.appointment.customer_phone);
+        
+        // Atualizar no banco que a notificação foi enviada
+        await supabaseAdmin.from('appointments').update({ whatsapp_notification_sent: true }).eq('id', result.appointment.id);
+      }
     } catch (e) {
-      console.warn('Falha ao enviar push notification silenciosa:', e);
+      console.warn('Falha ao enviar notificações (Push/WhatsApp):', e);
     }
 
     return NextResponse.json(
