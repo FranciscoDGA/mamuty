@@ -253,6 +253,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCustomers(enrichedCustomers);
       }
 
+      // 5. Fetch Transactions (Financeiro)
+      const { data: tData, error: tErr } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+      if (tErr || !tData) {
+        console.warn('Supabase transactions fetch falhou (tabela ausente?), fallback p/ localstorage:', tErr);
+      } else if (tData.length > 0) {
+        setTransactions(tData.map(t => ({
+          id: t.id,
+          appointmentId: t.appointment_id,
+          type: t.type,
+          category: t.category,
+          amount: Number(t.amount),
+          date: t.date,
+          paymentMethod: t.payment_method,
+          description: t.description,
+          barberId: t.barber_id,
+          barberName: t.barber_name,
+          customerName: t.customer_name,
+          createdAt: t.created_at
+        })));
+      }
+
     } catch (err: any) {
       console.warn('Graceful fallback applied:', err);
     } finally {
