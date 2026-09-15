@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       status: 'success',
     });
 
-    const contextoCliente = clienteContexto.get(cleanPhone) || {
+    const contextoCliente = sessao.context || {
       conversationHistory: [],
       activeDraft: {},
       currentCustomer: cliente,
@@ -193,10 +193,15 @@ export async function POST(request: NextRequest) {
       contextoCliente.currentCustomer = cliente;
     }
 
+    // Limitar histórico de conversas para não estourar payload
+    if (!contextoCliente.conversationHistory) contextoCliente.conversationHistory = [];
     contextoCliente.conversationHistory.push({
       role: 'user',
       content: messageBody,
     });
+    if (contextoCliente.conversationHistory.length > 20) {
+      contextoCliente.conversationHistory = contextoCliente.conversationHistory.slice(-20);
+    }
 
     // 6. Preparar catálogo de serviços, barbeiros e agendamentos
     let services: Service[] = [];
@@ -250,14 +255,14 @@ export async function POST(request: NextRequest) {
       barbers = MAMUTY_KNOWLEDGE_BASE.barbeiros.map((b) => ({
         id: b.id,
         name: b.nome,
-        role: 'barbeiro',
-        avatarUrl: '',
-        rating: 0,
-        reviewsCount: 0,
-        specialties: b.especialidades,
+        role: b.especialidade,
+        avatarUrl: '/logo.png',
+        rating: 5,
+        reviewsCount: 100,
+        specialties: [b.especialidade],
         phone: '',
         bio: '',
-        availableDays: [1, 2, 3, 4, 5, 6],
+        availableDays: b.diasDisponiveis || [1, 2, 3, 4, 5, 6],
       }));
     }
 
@@ -265,34 +270,29 @@ export async function POST(request: NextRequest) {
       const { data: dbAppointments } = await supabase
         .from('appointments')
         .select('*')
-        .in('status', ['confirmed', 'pending'])
         .gte('date', new Date().toISOString().split('T')[0]);
-
       if (dbAppointments) {
         appointments = dbAppointments.map((a) => ({
           id: a.id,
           customerName: a.customer_name,
           customerPhone: a.customer_phone,
-          customerEmail: a.customer_email || '',
-          serviceIds: a.service_ids || [],
-          serviceNames: a.service_names || [],
           barberId: a.barber_id,
           barberName: a.barber_name,
+          serviceIds: a.service_ids || [],
+          serviceNames: a.service_names || [],
           date: a.date,
           time: a.time,
           totalPrice: Number(a.total_price),
-          totalDurationMinutes: a.total_duration_minutes || 40,
-          paymentMethod: a.payment_method || 'pix',
-          paymentStatus: a.payment_status || 'pendente',
+          totalDurationMinutes: a.total_duration_minutes,
+          paymentMethod: a.payment_method,
+          paymentStatus: a.payment_status,
           status: a.status,
-          whatsappNotificationSent: a.whatsapp_notification_sent || false,
+          whatsappNotificationSent: a.whatsapp_notification_sent,
           createdAt: a.created_at,
-          notes: a.notes || '',
-          source: a.source || 'whatsapp',
         }));
       }
     } catch (e) {
-      console.warn('[Webhook Uazapi] Erro ao buscar agendamentos:', e);
+      console.warn('[Webhook Uazapi] Erro ao buscar appointments', e);
     }
 
     // 7. Cérebro do Atendente Alfred (Gemini AI com ferramentas)
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
           barbers,
           appointments,
           currentCustomer: contextoCliente.currentCustomer,
-          conversationHistory: contextoCliente.conversationHistory.map((m) => ({
+          conversationHistory: contextoCliente.conversationHistory.map((m: any) => ({
             role: m.role,
             content: m.content,
           })),
@@ -354,8 +354,6 @@ export async function POST(request: NextRequest) {
       content: replyText,
     });
 
-    clienteContexto.set(cleanPhone, contextoCliente);
-
     // 9. Registrar log da resposta
     const responseTime = Date.now() - startTime;
     await logConversation({
@@ -369,9 +367,9 @@ export async function POST(request: NextRequest) {
       responseTimeMs: responseTime,
     });
 
-    atualizarSessao(cleanPhone, {
+    await atualizarSessao(cleanPhone, {
       intents: [...(sessao.intents || []), intentDetected],
-      context: contextoCliente.activeDraft,
+      context: contextoCliente,
     });
 
     // 10. Disparar resposta ao cliente via Uazapi

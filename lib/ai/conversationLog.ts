@@ -101,22 +101,44 @@ function salvarLogEmMemoria(log: ConversationLog): void {
 }
 
 // -------------------------------------------
-// 3. SESSÕES DE CONVERSA
+// 3. SESSÕES DE CONVERSA (MIGRADO PARA SUPABASE)
 // -------------------------------------------
 
-const sessoesAtivas: Map<string, ConversationSession> = new Map();
-
 export async function obterOuCriarSessao(clientPhone: string, clientName?: string): Promise<ConversationSession> {
-  const existing = sessoesAtivas.get(clientPhone);
+  try {
+    const { data: sessaoExistente, error: errBusca } = await supabase
+      .from('conversation_sessions')
+      .select('*')
+      .eq('client_phone', clientPhone)
+      .eq('status', 'active')
+      .order('last_activity_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (existing) {
-    // Atualizar última atividade
-    existing.lastActivityAt = new Date().toISOString();
-    existing.messageCount++;
-    return existing;
+    if (sessaoExistente) {
+      // Atualizar no Supabase
+      await supabase.from('conversation_sessions').update({
+        last_activity_at: new Date().toISOString(),
+        message_count: sessaoExistente.message_count + 1
+      }).eq('id', sessaoExistente.id);
+
+      return {
+        id: sessaoExistente.id,
+        clientPhone: sessaoExistente.client_phone,
+        clientName: sessaoExistente.client_name,
+        startedAt: sessaoExistente.started_at,
+        lastActivityAt: new Date().toISOString(),
+        messageCount: sessaoExistente.message_count + 1,
+        intents: sessaoExistente.intents || [],
+        status: sessaoExistente.status,
+        context: sessaoExistente.context
+      };
+    }
+  } catch (e) {
+    console.warn('[ConversationLog] Erro ao buscar sessão no Supabase:', e);
   }
 
-  // Criar nova sessão
+  // Criar nova sessão no Supabase
   const sessao: ConversationSession = {
     id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     clientPhone,
@@ -125,17 +147,50 @@ export async function obterOuCriarSessao(clientPhone: string, clientName?: strin
     lastActivityAt: new Date().toISOString(),
     messageCount: 1,
     intents: [],
-    status: 'active'
+    status: 'active',
+    context: { conversationHistory: [], activeDraft: {} }
   };
 
-  sessoesAtivas.set(clientPhone, sessao);
+  try {
+    await supabase.from('conversation_sessions').insert({
+      id: sessao.id,
+      client_phone: sessao.clientPhone,
+      client_name: sessao.clientName,
+      started_at: sessao.startedAt,
+      last_activity_at: sessao.lastActivityAt,
+      message_count: sessao.messageCount,
+      intents: sessao.intents,
+      status: sessao.status,
+      context: sessao.context
+    });
+  } catch (e) {
+    console.warn('[ConversationLog] Erro ao criar sessão no Supabase:', e);
+  }
+
   return sessao;
 }
 
-export function atualizarSessao(clientPhone: string, updates: Partial<ConversationSession>): void {
-  const sessao = sessoesAtivas.get(clientPhone);
-  if (sessao) {
-    Object.assign(sessao, updates, { lastActivityAt: new Date().toISOString() });
+export async function atualizarSessao(clientPhone: string, updates: Partial<ConversationSession>): Promise<void> {
+  try {
+    const { data: sessaoExistente } = await supabase
+      .from('conversation_sessions')
+      .select('id')
+      .eq('client_phone', clientPhone)
+      .eq('status', 'active')
+      .order('last_activity_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+      
+    if (sessaoExistente) {
+      await supabase.from('conversation_sessions').update({
+        ...updates.status && { status: updates.status },
+        ...updates.intents && { intents: updates.intents },
+        ...updates.context && { context: updates.context },
+        last_activity_at: new Date().toISOString()
+      }).eq('id', sessaoExistente.id);
+    }
+  } catch (e) {
+    console.warn('[ConversationLog] Erro ao atualizar sessão no Supabase:', e);
   }
 }
 
