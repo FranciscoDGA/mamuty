@@ -719,6 +719,16 @@ export const BookingWizard: React.FC = () => {
               <p className="flex justify-between"><span className="text-slate-400">Horário</span> <span className="font-bold text-white">{selectedTime}</span></p>
               <p className="flex justify-between"><span className="text-slate-400">Pagamento</span> <span className="font-bold text-amber-300 uppercase">{paymentMethod}</span></p>
               <p className="flex justify-between border-t border-slate-800 pt-2"><span className="text-slate-400">Total</span> <span className="font-extrabold text-emerald-400 text-lg">R$ {selectedService?.price}</span></p>
+              
+              {paymentMethod === 'pix' && (
+                <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-col items-center text-center space-y-3">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Escaneie para pagar com PIX</span>
+                  <div className="bg-white p-2 rounded-xl">
+                    <img src="/pix-qrcode.jpeg" alt="QR Code PIX da Barbearia" className="w-32 h-32 object-cover rounded-lg" />
+                  </div>
+                  <p className="text-[10px] text-slate-400">Você também pode realizar o pagamento presencialmente no momento do atendimento.</p>
+                </div>
+              )}
             </div>
           </div>
 
