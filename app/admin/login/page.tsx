@@ -222,36 +222,10 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        {/* Tab Switcher: Entrar vs Cadastrar */}
-        <div className="grid grid-cols-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 mb-6 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('login');
-              setErrorMessage('');
-            }}
-            className={`py-2.5 rounded-xl transition ${
-              mode === 'login'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Entrar (Login)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('register');
-              setErrorMessage('');
-            }}
-            className={`py-2.5 rounded-xl transition ${
-              mode === 'register'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Cadastrar Dono
-          </button>
+        <div className="bg-slate-950/50 p-1 rounded-2xl mb-6">
+          <div className="py-2.5 rounded-xl bg-amber-500 text-slate-950 shadow-md font-black text-center w-full">
+            Entrar (Painel Administrativo)
+          </div>
         </div>
 
         {/* Alerts */}
