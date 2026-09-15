@@ -55,6 +55,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    try {
+      // Disparar Web Push
+      const pushTitle = 'Novo Agendamento! 🎉';
+      const pushBody = `${result.appointment.customer_name} agendou para ${result.appointment.date.split('-').reverse().join('/')} às ${result.appointment.time}`;
+      await fetch(new URL(request.url).origin + '/api/push/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: pushTitle, body: pushBody, url: '/admin' })
+      });
+    } catch (e) {
+      console.warn('Falha ao enviar push notification silenciosa:', e);
+    }
+
     return NextResponse.json(
       {
         success: true,
