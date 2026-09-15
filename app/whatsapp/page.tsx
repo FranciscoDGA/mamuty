@@ -519,7 +519,7 @@ export default function WhatsAppSimulationPage() {
         {isTyping && (
           <div className="flex items-end gap-2 animate-in fade-in">
             <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/30 shrink-0 mb-1">
-              <img src="/marcos-avatar.jpg" alt="Marcos" className="w-full h-full object-cover" />
+              <img src="/logo.png" alt="Alfred" className="w-full h-full object-cover" />
             </div>
             <div className="bg-slate-800/80 text-slate-300 rounded-2xl rounded-tl-md px-4 py-3 border border-slate-700/40 flex items-center gap-2.5 shadow-lg">
               <div className="flex gap-1">
@@ -527,7 +527,7 @@ export default function WhatsAppSimulationPage() {
                 <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                 <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
               </div>
-              <span className="text-xs text-slate-400 italic font-medium">Marcos está digitando...</span>
+              <span className="text-xs text-slate-400 italic font-medium">Alfred está digitando...</span>
             </div>
           </div>
         )}
