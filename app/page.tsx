@@ -76,6 +76,17 @@ export default function Home() {
     };
   }, []);
 
+  // Se o cliente leu um QR Code antigo ou link apontando para a raiz com ?barbeiro=...
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const bParam = params.get('barbeiro') || params.get('barber') || params.get('b');
+      if (bParam) {
+        router.replace(`/agendar?barbeiro=${encodeURIComponent(bParam)}`);
+      }
+    }
+  }, [router]);
+
   if (!isMounted) {
     return (
       <div className="flex flex-col min-h-screen bg-[#070a12] text-slate-100 items-center justify-center">

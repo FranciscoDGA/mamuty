@@ -212,30 +212,30 @@ export default function FinanceiroPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={exportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition border border-slate-700 cursor-pointer"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition border border-slate-700 cursor-pointer"
             title="Exportar dados para planilha Excel / CSV"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Exportar CSV</span>
+            <Download className="w-3.5 h-3.5 shrink-0" />
+            <span className="whitespace-nowrap">Exportar CSV</span>
           </button>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold transition shadow-lg shadow-emerald-500/20 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Lançar no Caixa</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap">Lançar no Caixa</span>
           </button>
         </div>
       </div>
 
       {/* Date Filter Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-400 font-semibold px-2">Período:</span>
+        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+          <span className="text-xs text-slate-400 font-semibold px-2 shrink-0">Período:</span>
           <button
             onClick={() => setDateFilter('today')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -270,8 +270,8 @@ export default function FinanceiroPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span>Filtrar Tipo:</span>
+        <div className="flex items-center gap-2 text-xs text-slate-400 w-full sm:w-auto">
+          <span className="shrink-0">Filtrar Tipo:</span>
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value as any)}
@@ -548,8 +548,8 @@ export default function FinanceiroPage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto pb-4">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                 <th className="py-2.5 px-3">Data</th>

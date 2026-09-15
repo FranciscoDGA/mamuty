@@ -104,10 +104,17 @@ export const BookingWizard: React.FC = () => {
 
   useEffect(() => {
     if (scannedBarberParam && barbers.length > 0) {
-      const match = barbers.find(
-        b => b.id.toLowerCase() === scannedBarberParam.toLowerCase() ||
-             b.name.toLowerCase().includes(scannedBarberParam.toLowerCase())
-      );
+      const param = scannedBarberParam.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const match = barbers.find(b => {
+        const bName = b.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const bId = b.id.toLowerCase();
+        return bId === param ||
+               bName === param ||
+               bName.includes(param) ||
+               param.includes(bName) ||
+               ((param.includes('hemerson') || param.includes('ermerson')) && bName.includes('hemerson')) ||
+               (param.includes('douglas') && bName.includes('douglas'));
+      });
       if (match) setSelectedBarber(match);
     }
   }, [scannedBarberParam, barbers]);

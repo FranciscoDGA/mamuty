@@ -43,14 +43,25 @@ export default function MarketingPage() {
     return barbers.find(b => b.id === selectedBarberId) || null;
   }, [selectedBarberId, barbers]);
 
-  // Target URL for Mirror QR Code
+  // Função para gerar slug limpo e definitivo que nunca muda
+  const getBarberSlug = (barber: typeof barbers[0] | null) => {
+    if (!barber) return '';
+    const cleanName = barber.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (cleanName.includes('hemerson') || cleanName.includes('ermerson')) return 'hemerson';
+    if (cleanName.includes('douglas')) return 'douglas';
+    return cleanName.trim().replace(/\s+/g, '-');
+  };
+
+  // Target URL for Mirror QR Code (Definitiva, Oficial e Permanente)
   const mirrorBookingUrl = useMemo(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mamuty.vercel.app';
-    if (selectedBarberId === 'all') {
-      return `${origin}/`;
+    // Garantir sempre o domínio oficial de produção definitivo para que as impressões físicas nunca fiquem inválidas
+    const officialDomain = 'https://mamuty.vercel.app';
+    if (selectedBarberId === 'all' || !selectedBarber) {
+      return `${officialDomain}/agendar`;
     }
-    return `${origin}/?barbeiro=${selectedBarberId}`;
-  }, [selectedBarberId]);
+    const slug = getBarberSlug(selectedBarber);
+    return `${officialDomain}/agendar?barbeiro=${slug}`;
+  }, [selectedBarberId, selectedBarber]);
 
   // Generate QR Code Data URL
   useEffect(() => {
@@ -165,7 +176,7 @@ export default function MarketingPage() {
         </div>
 
         {/* Top Tab Switcher */}
-        <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 self-start sm:self-auto">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('lembretes')}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
@@ -238,10 +249,10 @@ export default function MarketingPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 w-full sm:w-auto">
               <button
                 onClick={() => setFilterDays(15)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   filterDays === 15 ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
                 }`}
               >
@@ -249,7 +260,7 @@ export default function MarketingPage() {
               </button>
               <button
                 onClick={() => setFilterDays(20)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   filterDays === 20 ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
                 }`}
               >
@@ -257,7 +268,7 @@ export default function MarketingPage() {
               </button>
               <button
                 onClick={() => setFilterDays(30)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   filterDays === 30 ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
                 }`}
               >
@@ -439,7 +450,7 @@ export default function MarketingPage() {
               {/* Dedicated Barber Chair Badge */}
               <div className="my-3 inline-block bg-amber-500/10 border border-amber-500/40 px-4 py-1.5 rounded-full">
                 <span className="text-xs sm:text-sm font-extrabold text-amber-300">
-                  {selectedBarber ? `CADEIRA DO ${selectedBarber.name.toUpperCase()}` : 'CADEIRA VIP &bull; AGENDAMENTO RÁPIDO'}
+                  {selectedBarber ? `CADEIRA DO ${selectedBarber.name.toUpperCase()}` : 'CADEIRA VIP • AGENDAMENTO RÁPIDO'}
                 </span>
               </div>
 
