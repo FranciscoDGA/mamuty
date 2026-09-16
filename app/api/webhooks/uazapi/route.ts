@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
         specialties: b.especialidades || [],
         phone: '',
         bio: '',
-        availableDays: b.diasDisponiveis || [1, 2, 3, 4, 5, 6],
+        availableDays: [1, 2, 3, 4, 5, 6],
       }));
     }
 
