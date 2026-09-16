@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { INITIAL_SERVICES, INITIAL_BARBERS, INITIAL_APPOINTMENTS } from '@/lib/data';
 import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
-import { pensarEResponderMarcos } from '@/lib/ai/brain';
+import { pensarEResponderAlfred } from '@/lib/ai/brain';
 import { checkApiRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       content: m.content || m.text || ''
     }));
 
-    const brainResult = await pensarEResponderMarcos(userText, {
+    const brainResult = await pensarEResponderAlfred(userText, {
       services,
       barbers,
       appointments,

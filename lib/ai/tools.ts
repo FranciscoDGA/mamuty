@@ -382,7 +382,7 @@ export function tool_encaminhar_para_humano(motivo?: string): ToolExecutionResul
       whatsapp: '5594984439065',
       whatsappFormatado: '(94) 98443-9065',
       motivo: motivo || 'Dúvida ou solicitação fora do escopo automatizado',
-      linkDireto: 'https://wa.me/5594984439065?text=Ol%C3%A1%20Hemerson%2C%20o%20assistente%20Marcos%20me%20encaminhou%20para%20falar%20com%20voc%C3%AA.'
+      linkDireto: 'https://wa.me/5594984439065?text=Ol%C3%A1%20Hemerson%2C%20o%20assistente%20Alfred%20me%20encaminhou%20para%20falar%20com%20voc%C3%AA.'
     }
   };
 }

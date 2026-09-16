@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, DialogStep, BookingDraft } from '@/lib/conversation/types';
 import { processUserMessage } from '@/lib/conversation/engine';
-import { pensarEResponderMarcos } from '@/lib/ai/brain';
+import { pensarEResponderalfred } from '@/lib/ai/brain';
 
 export default function WhatsAppSimulationPage() {
   const { 
@@ -66,7 +66,7 @@ export default function WhatsAppSimulationPage() {
     setMessages([
       {
         id: 'msg-init-1',
-        sender: 'marcos',
+        sender: 'alfred',
         text: `Fala, tudo bem? 👋 Sou o *Alfred*, assistente digital da *Barbearia Mamuty*!\n\nEstou aqui para tirar dúvidas sobre serviços, preços e horários, além de garantir seu agendamento sem fila de espera.\n\nComo posso te ajudar hoje? 💈`,
         timestamp: timeStr,
         intent: 'SAUDACAO',
@@ -139,7 +139,7 @@ export default function WhatsAppSimulationPage() {
 
         // 2. Fallback de regras caso a API não responda
         if (!replyText) {
-          const brainOutput = await pensarEResponderMarcos(queryText, {
+          const brainOutput = await pensarEResponderalfred(queryText, {
             services,
             barbers,
             appointments,
@@ -157,7 +157,7 @@ export default function WhatsAppSimulationPage() {
 
         const alfredMsg: ChatMessage = {
           id: 'alfred-' + Date.now(),
-          sender: 'marcos',
+          sender: 'alfred',
           text: replyText,
           timestamp: timeStr,
           intent: 'GREETING' as any,
@@ -174,7 +174,7 @@ export default function WhatsAppSimulationPage() {
           ...prev,
           {
             id: 'err-' + Date.now(),
-            sender: 'marcos',
+            sender: 'alfred',
             text: 'Tive uma oscilação na conexão. Você pode agendar direto pelo link: https://mamuty.vercel.app/agendar',
             timestamp: timeStr
           }
@@ -225,7 +225,7 @@ export default function WhatsAppSimulationPage() {
 
           <div className="relative">
             <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-amber-500/50 bg-slate-900 shadow-lg shadow-amber-500/10">
-              <img src="/marcos-avatar.jpg" alt="Alfred - Assistente Digital" className="w-full h-full object-cover" />
+              <img src="/alfred-avatar.jpg" alt="Alfred - Assistente Digital" className="w-full h-full object-cover" />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#111827] rounded-full shadow-sm"></span>
           </div>
@@ -323,7 +323,7 @@ export default function WhatsAppSimulationPage() {
             >
               {!isUser && (
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/30 shrink-0 mb-1">
-                  <img src="/marcos-avatar.jpg" alt="Marcos" className="w-full h-full object-cover" />
+                  <img src="/alfred-avatar.jpg" alt="alfred" className="w-full h-full object-cover" />
                 </div>
               )}
               <div
@@ -480,7 +480,7 @@ export default function WhatsAppSimulationPage() {
                 {msg.component === 'human_handoff' && (
                   <div className="mt-3 pt-3 border-t border-slate-700/40">
                     <a
-                      href="https://wa.me/5594984439065?text=Ol%C3%A1%20Hemerson%2C%20o%20assistente%20Marcos%20me%20encaminhou%20para%20falar%20com%20voc%C3%AA."
+                      href="https://wa.me/5594984439065?text=Ol%C3%A1%20Hemerson%2C%20o%20assistente%20alfred%20me%20encaminhou%20para%20falar%20com%20voc%C3%AA."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs flex items-center justify-center gap-2.5 transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30"

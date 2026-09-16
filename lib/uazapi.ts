@@ -227,7 +227,7 @@ export async function verificarStatusUazapi(): Promise<{ online: boolean; state:
 }
 
 /**
- * Wrapper de resposta do Funcionário Digital Marcos compatível com Uazapi
+ * Wrapper de resposta do Funcionário Digital Alfred compatível com Uazapi
  */
 export async function enviarRespostaFuncionarioUazapi(
   phone: string,

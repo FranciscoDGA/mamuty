@@ -280,7 +280,7 @@ export const INITIAL_APPOINTMENTS: Appointment[] = [
   },
   {
     id: 'apt-4',
-    customerName: 'Marcos Souza',
+    customerName: 'Alfred Souza',
     customerPhone: '94994445566',
     serviceIds: ['srv-4'],
     serviceNames: ['Cabelo + Barba'],

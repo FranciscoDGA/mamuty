@@ -7,7 +7,7 @@ import {
   validarWebhookUazapi,
 } from '@/lib/uazapi';
 import { alfredChat } from '@/lib/alfred/service';
-import { pensarEResponderMarcos, BrainContext } from '@/lib/ai/brain';
+import { pensarEResponderAlfred, BrainContext } from '@/lib/ai/brain';
 import { obterOuCriarSessao, logConversation, atualizarSessao } from '@/lib/ai/conversationLog';
 import { Appointment, Barber, Customer, Service } from '@/lib/types';
 import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
@@ -333,7 +333,7 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        const brainOutput = await pensarEResponderMarcos(messageBody, brainContext);
+        const brainOutput = await pensarEResponderAlfred(messageBody, brainContext);
         replyText = brainOutput.reply;
         intentDetected = brainOutput.intent;
         if (brainOutput.newDraftState) {

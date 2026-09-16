@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { normalizarPhone, extrairPhoneParaBusca, enviarRespostaFuncionario, isZApiConfigured, validarWebhook } from '@/lib/zapi';
 import { enviarMensagemUazapi, isUazapiConfigured } from '@/lib/uazapi';
-import { pensarEResponderMarcos, BrainContext } from '@/lib/ai/brain';
+import { pensarEResponderAlfred, BrainContext } from '@/lib/ai/brain';
 import { obterOuCriarSessao, logConversation, atualizarSessao } from '@/lib/ai/conversationLog';
 import { Appointment, Barber, Customer, Service } from '@/lib/types';
 import { MAMUTY_KNOWLEDGE_BASE } from '@/lib/ai/knowledgeBase';
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
 
     let brainOutput;
     try {
-      brainOutput = await pensarEResponderMarcos(messageBody, brainContext);
+      brainOutput = await pensarEResponderAlfred(messageBody, brainContext);
     } catch (error: any) {
       console.error('[Webhook] Erro no Brain:', error);
 

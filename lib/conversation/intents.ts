@@ -119,7 +119,7 @@ export function classificarIntencao(texto: string): IntentType {
     norm.startsWith('boa tarde') ||
     norm.startsWith('boa noite') ||
     norm === 'ola mamuty' ||
-    norm === 'oi marcos'
+    norm === 'oi alfred'
   ) {
     return 'GREETING';
   }
