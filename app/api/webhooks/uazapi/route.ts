@@ -255,11 +255,11 @@ export async function POST(request: NextRequest) {
       barbers = MAMUTY_KNOWLEDGE_BASE.barbeiros.map((b) => ({
         id: b.id,
         name: b.nome,
-        role: b.especialidade,
+        role: b.especialidades?.[0] || 'Barbeiro',
         avatarUrl: '/logo.png',
         rating: 5,
         reviewsCount: 100,
-        specialties: [b.especialidade],
+        specialties: b.especialidades || [],
         phone: '',
         bio: '',
         availableDays: b.diasDisponiveis || [1, 2, 3, 4, 5, 6],
