@@ -1,5 +1,7 @@
 import { supabase } from '../supabase';
 
+const sessoesAtivas = new Map<string, ConversationSession>();
+
 // ============================================
 // SPRINT 7 — LOG DE CONVERSAS WHATSAPP
 // ============================================
