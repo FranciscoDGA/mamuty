@@ -113,7 +113,7 @@ export interface BrainOutput {
  * 3. Respostas curtas e naturais (WhatsApp style)
  * 4. Conduzir para agendamento quando possível
  */
-export async function pensarEResponderalfred(
+export async function pensarEResponderAlfred(
   userMessage: string,
   context: BrainContext
 ): Promise<BrainOutput> {

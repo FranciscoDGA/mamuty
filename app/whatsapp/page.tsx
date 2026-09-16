@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, DialogStep, BookingDraft } from '@/lib/conversation/types';
 import { processUserMessage } from '@/lib/conversation/engine';
-import { pensarEResponderalfred } from '@/lib/ai/brain';
+import { pensarEResponderAlfred } from '@/lib/ai/brain';
 
 export default function WhatsAppSimulationPage() {
   const { 
@@ -139,7 +139,7 @@ export default function WhatsAppSimulationPage() {
 
         // 2. Fallback de regras caso a API não responda
         if (!replyText) {
-          const brainOutput = await pensarEResponderalfred(queryText, {
+          const brainOutput = await pensarEResponderAlfred(queryText, {
             services,
             barbers,
             appointments,
