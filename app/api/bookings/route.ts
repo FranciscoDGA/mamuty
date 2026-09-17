@@ -10,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createBooking, type BookingInput } from '@/lib/booking/service';
 import { checkApiRateLimit } from '@/lib/rateLimit';
 import { enviarMensagemUazapi } from '@/lib/uazapi';
+import { sendWebPushNotification } from '@/lib/notifications/webpush';
 
 // ─── POST: Create Booking ────────────────────────────────────────────────────
 
@@ -61,15 +62,15 @@ export async function POST(request: NextRequest) {
         // 1. Disparar Web Push para o dono/barbeiros
         const pushTitle = 'Novo Agendamento! 🎉';
         const pushBody = `${result.appointment.customer_name} agendou para ${result.appointment.date.split('-').reverse().join('/')} às ${result.appointment.time}`;
-        await fetch(new URL(request.url).origin + '/api/push/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: pushTitle, body: pushBody, url: '/admin' })
-        });
+        await sendWebPushNotification(pushTitle, pushBody, '/admin');
 
         // 2. Disparar WhatsApp para o cliente confirmando o agendamento e avisando da tolerância
         if (result.appointment.customer_phone) {
-          const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
+          const valorFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(result.appointment.total_price);
+          const pagtoMap: Record<string, string> = { pix: 'PIX', debito: 'Cartão de Débito', credito: 'Cartão de Crédito', presencial: 'Dinheiro no Balcão' };
+          const metodoPagto = pagtoMap[result.appointment.payment_method] || result.appointment.payment_method.toUpperCase();
+          
+          const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n💈 *Profissional:* ${result.appointment.barber_name}\n✂️ *Serviço:* ${result.appointment.service_name}\n💰 *Valor Total:* ${valorFmt}\n💳 *Pagamento:* ${metodoPagto}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
           await enviarMensagemUazapi(msgCliente, result.appointment.customer_phone);
           
           // Atualizar no banco que a notificação foi enviada
