@@ -59,31 +59,38 @@ export async function POST(request: NextRequest) {
 
     try {
       if (result.appointment) {
-        // 1. Disparar Web Push para o dono/barbeiros
+        // Disparar notificações em background para não bloquear a resposta do frontend
+        const notifications = [];
+
+        // 1. Web Push para o dono/barbeiros
         const pushTitle = 'Novo Agendamento! 🎉';
         const pushBody = `${result.appointment.customer_name} agendou para ${result.appointment.date.split('-').reverse().join('/')} às ${result.appointment.time}`;
-        await sendWebPushNotification(pushTitle, pushBody, '/admin');
+        notifications.push(sendWebPushNotification(pushTitle, pushBody, '/admin'));
 
-        // 2. Disparar WhatsApp para o cliente confirmando o agendamento e avisando da tolerância
+        // 2. WhatsApp para o cliente
         if (result.appointment.customer_phone) {
           const valorFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(result.appointment.total_price);
           const pagtoMap: Record<string, string> = { pix: 'PIX', debito: 'Cartão de Débito', credito: 'Cartão de Crédito', presencial: 'Dinheiro no Balcão' };
           const metodoPagto = pagtoMap[result.appointment.payment_method] || result.appointment.payment_method.toUpperCase();
           
           const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n💈 *Profissional:* ${result.appointment.barber_name}\n✂️ *Serviço:* ${result.appointment.service_names?.[0] || 'Serviço'}\n💰 *Valor Total:* ${valorFmt}\n💳 *Pagamento:* ${metodoPagto}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
-          await enviarMensagemUazapi(msgCliente, result.appointment.customer_phone);
-          
-          // Atualizar no banco que a notificação foi enviada
-          await supabaseAdmin.from('appointments').update({ whatsapp_notification_sent: true }).eq('id', result.appointment.id);
+          notifications.push(
+            enviarMensagemUazapi(msgCliente, result.appointment.customer_phone).then(() => {
+               supabaseAdmin.from('appointments').update({ whatsapp_notification_sent: true }).eq('id', result.appointment!.id);
+            })
+          );
         }
 
-        // 3. Disparar WhatsApp para o dono da loja (Hemerson)
+        // 3. WhatsApp para o dono da loja (Hemerson)
         const ADMIN_PHONE = process.env.ADMIN_PHONE || '5594984439065';
         const msgAdmin = `🚨 *NOVO AGENDAMENTO!* 🚨\n\nO cliente *${result.appointment.customer_name}* acabou de agendar pelo site/assistente!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n✂️ *Serviço:* ${result.appointment.service_names?.[0] || 'Serviço'}\n💈 *Barbeiro:* ${result.appointment.barber_name}\n\n📱 *Contato:* ${result.appointment.customer_phone}`;
-        await enviarMensagemUazapi(msgAdmin, ADMIN_PHONE);
+        notifications.push(enviarMensagemUazapi(msgAdmin, ADMIN_PHONE));
+
+        // Executar tudo sem bloquear a requisição usando Promise.allSettled
+        Promise.allSettled(notifications).catch(e => console.warn('Falha background:', e));
       }
     } catch (e) {
-      console.warn('Falha ao enviar notificações (Push/WhatsApp):', e);
+      console.warn('Falha ao agendar notificações (Push/WhatsApp):', e);
     }
 
     return NextResponse.json(

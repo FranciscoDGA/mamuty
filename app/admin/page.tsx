@@ -56,6 +56,39 @@ export default function AdminPage() {
   );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Áudio de notificação para o Admin
+  const [lastAlertId, setLastAlertId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (latestNewBooking && latestNewBooking.id !== lastAlertId) {
+      setLastAlertId(latestNewBooking.id);
+      
+      // Tocar um som de notificação simples usando Web Audio API
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime); // 880Hz (A5)
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          
+          osc.start();
+          setTimeout(() => {
+            osc.stop();
+            ctx.close().catch(() => {});
+          }, 300);
+        }
+      } catch (err) {
+        console.warn('Falha ao tocar áudio:', err);
+      }
+    }
+  }, [latestNewBooking, lastAlertId]);
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const [manualServiceId, setManualServiceId] = useState('');

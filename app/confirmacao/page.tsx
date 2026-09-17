@@ -63,6 +63,48 @@ function ConfirmacaoContent() {
 
   const googleMapsUrl = `https://www.google.com/maps/search/Cumaru+do+Norte+PA`;
 
+  React.useEffect(() => {
+    // Tocar um som de sucesso para o cliente
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        
+        // Toca dois bipes rápidos e agudos (som de confirmação)
+        const playTone = (freq: number, startTime: number, duration: number) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+          
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.1, startTime + 0.05);
+          gain.gain.linearRampToValueAtTime(0, startTime + duration);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+
+        const now = ctx.currentTime;
+        playTone(523.25, now, 0.15); // C5
+        playTone(659.25, now + 0.15, 0.25); // E5
+      }
+    } catch (e) {}
+
+    // Exibir notificação local no navegador do cliente (se permitido)
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Agendamento Confirmado! 🎉', {
+        body: `Seu horário com ${barber} no dia ${formattedDate} às ${time} foi marcado com sucesso!`,
+        icon: '/logo.png'
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, [barber, formattedDate, time]);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#070a12] text-slate-100">
       <OfflineIndicator />

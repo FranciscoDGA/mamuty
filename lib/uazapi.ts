@@ -110,22 +110,31 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
   };
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+    
     const response = await fetch(primaryUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       // Fallback para endpoint alternativo /message/sendText ou instanciado
       const fallbackUrl = `${UAZAPI_BASE_URL}/message/sendText`;
+      const fallbackController = new AbortController();
+      const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 8000);
+      
       const fallbackResponse = await fetch(fallbackUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
-      });
+        signal: fallbackController.signal,
+      }).finally(() => clearTimeout(fallbackTimeoutId));
 
       if (fallbackResponse.ok) {
         const fallbackData = await fallbackResponse.json().catch(() => ({}));
