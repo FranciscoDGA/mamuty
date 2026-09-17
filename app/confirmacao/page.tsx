@@ -64,33 +64,39 @@ function ConfirmacaoContent() {
   const googleMapsUrl = `https://www.google.com/maps/search/Cumaru+do+Norte+PA`;
 
   React.useEffect(() => {
-    // Tocar um som de sucesso para o cliente
+    // Tocar um som de sucesso para o cliente (tocar 3 vezes)
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioContext) {
         const ctx = new AudioContext();
         
-        // Toca dois bipes rápidos e agudos (som de confirmação)
-        const playTone = (freq: number, startTime: number, duration: number) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, startTime);
-          
-          gain.gain.setValueAtTime(0, startTime);
-          gain.gain.linearRampToValueAtTime(0.1, startTime + 0.05);
-          gain.gain.linearRampToValueAtTime(0, startTime + duration);
-          
-          osc.start(startTime);
-          osc.stop(startTime + duration);
+        const playSequence = (delayOffset: number) => {
+          const playTone = (freq: number, startTime: number, duration: number) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+            
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05); // Volume aumentado para 0.5
+            gain.gain.linearRampToValueAtTime(0, startTime + duration);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+          };
+
+          const start = ctx.currentTime + delayOffset;
+          playTone(523.25, start, 0.15); // C5
+          playTone(659.25, start + 0.15, 0.25); // E5
         };
 
-        const now = ctx.currentTime;
-        playTone(523.25, now, 0.15); // C5
-        playTone(659.25, now + 0.15, 0.25); // E5
+        // Toca o alarme 3 vezes em seguida (com intervalos)
+        playSequence(0);
+        playSequence(0.8);
+        playSequence(1.6);
       }
     } catch (e) {}
 

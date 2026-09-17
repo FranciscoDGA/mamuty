@@ -69,20 +69,29 @@ export default function AdminPage() {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContext) {
           const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
           
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(880, ctx.currentTime); // 880Hz (A5)
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          
-          osc.start();
-          setTimeout(() => {
-            osc.stop();
-            ctx.close().catch(() => {});
-          }, 300);
+          const playBeep = (delayOffset: number) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.type = 'sine';
+            const startTime = ctx.currentTime + delayOffset;
+            osc.frequency.setValueAtTime(880, startTime); // 880Hz (A5)
+            
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+            gain.gain.linearRampToValueAtTime(0, startTime + 0.3);
+            
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+          };
+
+          // Toca 3 vezes
+          playBeep(0);
+          playBeep(0.5);
+          playBeep(1.0);
         }
       } catch (err) {
         console.warn('Falha ao tocar áudio:', err);
