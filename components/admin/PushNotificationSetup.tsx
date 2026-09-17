@@ -74,13 +74,36 @@ export default function PushNotificationSetup() {
     }
   };
 
+  const handleUnsubscribe = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+        await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+      }
+      setIsSubscribed(false);
+      alert('Alertas resetados! Clique em "Ativar Alertas" novamente para consertar as chaves.');
+    } catch (err) {
+      console.error('Error unsubscribing:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) return <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
 
   if (isSubscribed) {
     return (
-      <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold" title="Notificações Ativas">
-        <Bell className="w-4 h-4" /> Alertas ON
-      </div>
+      <button
+        onClick={handleUnsubscribe}
+        className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition"
+        title="Clique para resetar os alertas"
+      >
+        <Bell className="w-4 h-4" /> Alertas ON (Resetar)
+      </button>
     );
   }
 
