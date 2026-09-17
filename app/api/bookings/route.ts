@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
           const pagtoMap: Record<string, string> = { pix: 'PIX', debito: 'Cartão de Débito', credito: 'Cartão de Crédito', presencial: 'Dinheiro no Balcão' };
           const metodoPagto = pagtoMap[result.appointment.payment_method] || result.appointment.payment_method.toUpperCase();
           
-          const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n💈 *Profissional:* ${result.appointment.barber_name}\n✂️ *Serviço:* ${result.appointment.service_name}\n💰 *Valor Total:* ${valorFmt}\n💳 *Pagamento:* ${metodoPagto}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
+          const msgCliente = `Olá ${result.appointment.customer_name}! ✂️\n\nSeu agendamento na *Mamuty Barbearia* foi *confirmado* com sucesso!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n💈 *Profissional:* ${result.appointment.barber_name}\n✂️ *Serviço:* ${result.appointment.service_names?.[0] || 'Serviço'}\n💰 *Valor Total:* ${valorFmt}\n💳 *Pagamento:* ${metodoPagto}\n\n⚠️ *Atenção:* Temos uma tolerância máxima de *10 minutos* de atraso para não prejudicar o próximo cliente. Por favor, não se atrase!\n\nTe esperamos lá!`;
           await enviarMensagemUazapi(msgCliente, result.appointment.customer_phone);
           
           // Atualizar no banco que a notificação foi enviada
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
         // 3. Disparar WhatsApp para o dono da loja (Hemerson)
         const ADMIN_PHONE = process.env.ADMIN_PHONE || '5594984439065';
-        const msgAdmin = `🚨 *NOVO AGENDAMENTO!* 🚨\n\nO cliente *${result.appointment.customer_name}* acabou de agendar pelo site/assistente!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n✂️ *Serviço:* ${result.appointment.service_name}\n💈 *Barbeiro:* ${result.appointment.barber_name}\n\n📱 *Contato:* ${result.appointment.customer_phone}`;
+        const msgAdmin = `🚨 *NOVO AGENDAMENTO!* 🚨\n\nO cliente *${result.appointment.customer_name}* acabou de agendar pelo site/assistente!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n✂️ *Serviço:* ${result.appointment.service_names?.[0] || 'Serviço'}\n💈 *Barbeiro:* ${result.appointment.barber_name}\n\n📱 *Contato:* ${result.appointment.customer_phone}`;
         await enviarMensagemUazapi(msgAdmin, ADMIN_PHONE);
       }
     } catch (e) {
