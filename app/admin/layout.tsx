@@ -23,7 +23,8 @@ import {
   Loader2,
   ChevronRight,
   HelpCircle,
-  Calendar
+  Calendar,
+  Rocket
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -64,6 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/automacoes', label: 'Automações', icon: Sparkles },
     { href: '/admin/whatsapp', label: 'WhatsApp Monitor', icon: Sparkles },
     { href: '/admin/marketing', label: 'Marketing & QR Code', icon: Sparkles },
+    { href: '/admin/futuro', label: 'Mamuty Labs (Futuro)', icon: Rocket },
     { href: '/admin/ajuda', label: 'Ajuda & Treinamento', icon: HelpCircle, isSpecial: true },
     { href: '/admin/configuracoes', label: 'Configurações', icon: Settings },
   ];
