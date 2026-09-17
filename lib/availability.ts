@@ -334,7 +334,17 @@ export function consultarDisponibilidade(
 
   // Generate candidate slots using the SSoT windows
   const candidateSlots = generateCandidateSlots(dayOfWeek, serviceDurationMinutes);
-  const minMinutes = timeToMinutes(horarioMinimo);
+  let minMinutes = timeToMinutes(horarioMinimo);
+  
+  // If the date is today, ensure minMinutes is at least the current time
+  const today = new Date();
+  const dateObj = new Date(data + 'T12:00:00');
+  if (today.toDateString() === dateObj.toDateString()) {
+    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+    if (currentMinutes > minMinutes) {
+      minMinutes = currentMinutes;
+    }
+  }
 
   const targetBarbers =
     barberId && barberId !== 'all' && barberId !== 'any'
@@ -382,16 +392,16 @@ export function consultarDisponibilidade(
       }
     }
 
-    const disponivel = barbeirosDisponiveis.length > 0;
+    const disponivel = barbeirosDisponiveis.length > 0 && !isBelowMin;
 
     slots.push({
       horario: slot,
       disponivel,
-      motivo: !disponivel ? 'Ocupado por outro atendimento' : undefined,
+      motivo: isBelowMin ? 'Horário no passado' : (!disponivel ? 'Ocupado por outro atendimento' : undefined),
       barbeirosDisponiveis,
     });
 
-    if (disponivel && !isBelowMin) {
+    if (disponivel) {
       for (const b of barbeirosDisponiveis) {
         sugestoesFormatadas.push({ barberName: b.name, horario: slot });
       }

@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
           // Atualizar no banco que a notificação foi enviada
           await supabaseAdmin.from('appointments').update({ whatsapp_notification_sent: true }).eq('id', result.appointment.id);
         }
+
+        // 3. Disparar WhatsApp para o dono da loja (Hemerson)
+        const ADMIN_PHONE = process.env.ADMIN_PHONE || '5594984439065';
+        const msgAdmin = `🚨 *NOVO AGENDAMENTO!* 🚨\n\nO cliente *${result.appointment.customer_name}* acabou de agendar pelo site/assistente!\n\n📅 *Data:* ${result.appointment.date.split('-').reverse().join('/')}\n⏰ *Horário:* ${result.appointment.time}\n✂️ *Serviço:* ${result.appointment.service_name}\n💈 *Barbeiro:* ${result.appointment.barber_name}\n\n📱 *Contato:* ${result.appointment.customer_phone}`;
+        await enviarMensagemUazapi(msgAdmin, ADMIN_PHONE);
       }
     } catch (e) {
       console.warn('Falha ao enviar notificações (Push/WhatsApp):', e);
