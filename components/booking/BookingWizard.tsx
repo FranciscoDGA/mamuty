@@ -541,8 +541,8 @@ export const BookingWizard: React.FC = () => {
                   <span className="text-[10px] text-slate-400">{date.monthName}</span>
                   {date.isSunday && <span className="text-[9px] text-amber-400/90 mt-1 font-bold">Até 12h</span>}
                   {date.isClosed && <span className="text-[9px] text-rose-400/90 mt-1 font-bold">Fechado</span>}
-                  {!date.isClosed && !date.isSunday && date.barberAvailable && selectedBarber && selectedBarber.id !== 'any' && (
-                    <span className="text-[9px] text-emerald-400/90 mt-1 font-bold">Folga</span>
+                  {!date.isClosed && !date.isSunday && !date.barberAvailable && selectedBarber && selectedBarber.id !== 'any' && (
+                    <span className="text-[9px] text-rose-400/90 mt-1 font-bold">Folga</span>
                   )}
                 </button>
               );
