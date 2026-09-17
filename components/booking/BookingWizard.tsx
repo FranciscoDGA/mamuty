@@ -731,6 +731,13 @@ export const BookingWizard: React.FC = () => {
             </div>
           </div>
 
+          {submitError && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-xs p-3 rounded-xl flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <button onClick={handlePrevStep} className="text-sm text-slate-400 hover:text-white flex items-center gap-1 transition">
               <ChevronLeft className="w-4 h-4" /> Voltar
