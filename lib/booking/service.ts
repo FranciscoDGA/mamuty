@@ -334,8 +334,16 @@ export async function createBooking(
     .eq('id', input.serviceId)
     .single();
 
-  if (serviceError || !service) {
-    return { success: false, error: 'Serviço não encontrado', errorCode: 'SERVICE_NOT_FOUND' };
+  if (serviceError) {
+    console.error('[createBooking] Erro ao buscar serviço:', serviceError);
+    if (serviceError.message?.includes('Invalid API key') || serviceError.code === 'PGRST301') {
+      return { success: false, error: 'Erro de autorização: Verifique a SUPABASE_SERVICE_ROLE_KEY.', errorCode: 'AUTH_ERROR' };
+    }
+    return { success: false, error: 'Erro interno ao buscar serviço.', errorCode: 'DB_ERROR' };
+  }
+
+  if (!service) {
+    return { success: false, error: 'Serviço não encontrado no banco de dados.', errorCode: 'SERVICE_NOT_FOUND' };
   }
 
   if (service.active === false) {
