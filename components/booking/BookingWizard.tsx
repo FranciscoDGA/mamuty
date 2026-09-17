@@ -272,7 +272,6 @@ export const BookingWizard: React.FC = () => {
       } else {
         setSubmitError(message);
       }
-    } finally {
       setIsSubmitting(false);
     }
   };
