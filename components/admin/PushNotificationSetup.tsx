@@ -102,7 +102,7 @@ export default function PushNotificationSetup() {
         className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition"
         title="Clique para resetar os alertas"
       >
-        <Bell className="w-4 h-4" /> Alertas ON (Resetar)
+        <Bell className="w-4 h-4" /> Pop-ups ON (Resetar)
       </button>
     );
   }
@@ -113,7 +113,7 @@ export default function PushNotificationSetup() {
       className="flex items-center gap-2 text-rose-400 hover:text-rose-300 text-xs font-bold transition"
       title="Ativar Notificações"
     >
-      <BellOff className="w-4 h-4" /> Ativar Alertas
+      <BellOff className="w-4 h-4" /> Ativar Pop-ups
     </button>
   );
 }
