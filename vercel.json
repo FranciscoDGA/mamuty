@@ -30,11 +30,5 @@
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/reminders",
-      "schedule": "0 * * * *"
-    }
   ]
 }
