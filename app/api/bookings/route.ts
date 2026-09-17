@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+    const sessionHash = searchParams.get('sessionHash');
 
     let query = supabaseAdmin
       .from('appointments')
@@ -131,6 +132,23 @@ export async function GET(request: NextRequest) {
     // Filter by phone (required for non-admin)
     if (phone) {
       const cleanPhone = phone.replace(/\D/g, '');
+      
+      // Validação de segurança Anti-Trote:
+      // O frontend deve enviar a sessionHash (obtida via PIN do WhatsApp)
+      // Apenas em dev/teste ignoramos isso se não for passado, ou podemos forçar
+      if (sessionHash) {
+        const crypto = require('crypto');
+        const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'default-secret';
+        const expectedSession = crypto.createHmac('sha256', secret).update(`${cleanPhone}:VERIFIED_SESSION`).digest('hex');
+        
+        if (sessionHash !== expectedSession) {
+          return NextResponse.json({ error: 'Sessão inválida. Faça login novamente.' }, { status: 401 });
+        }
+      } else {
+        // Se a segurança estiver ativa e não mandou sessionHash, bloqueia
+        return NextResponse.json({ error: 'Sessão inválida (PIN necessário).' }, { status: 401 });
+      }
+
       query = query.eq('customer_phone', cleanPhone);
     }
 

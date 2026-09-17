@@ -542,7 +542,7 @@ export async function cancelBooking(
   // Fetch the appointment
   let query = supabase
     .from('appointments')
-    .select('id, status, customer_phone')
+    .select('id, status, customer_phone, date, time')
     .eq('id', appointmentId);
 
   const { data: apt, error: fetchError } = await query.single();
@@ -563,6 +563,13 @@ export async function cancelBooking(
   // Can only cancel confirmed or aguardando
   if (!['confirmed', 'aguardando'].includes(apt.status)) {
     return { success: false, error: `Não é possível cancelar agendamento com status: ${apt.status}` };
+  }
+
+  // REGRA DE NEGÓCIO: Bloquear cancelamento com menos de 1 hora de antecedência
+  const appointmentDateTime = new Date(`${apt.date}T${apt.time}:00`);
+  const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+  if (appointmentDateTime < oneHourFromNow) {
+    return { success: false, error: 'Falta menos de 1 hora para o seu agendamento! Para alterações, entre em contato pelo WhatsApp.' };
   }
 
   // Update status
@@ -625,6 +632,13 @@ export async function rescheduleBooking(
   // Can only reschedule confirmed or aguardando
   if (!['confirmed', 'aguardando'].includes(existing.status)) {
     return { success: false, error: `Não é possível remarcar agendamento com status: ${existing.status}`, errorCode: 'INVALID_STATUS' };
+  }
+
+  // REGRA DE NEGÓCIO: Bloquear remarcação com menos de 1 hora de antecedência
+  const appointmentDateTime = new Date(`${existing.date}T${existing.time}:00`);
+  const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+  if (appointmentDateTime < oneHourFromNow) {
+    return { success: false, error: 'Falta menos de 1 hora para o seu agendamento! Para alterações, entre em contato pelo WhatsApp.', errorCode: 'TOO_CLOSE' };
   }
 
   // 2. Create new booking with same service but new date/time/barber
@@ -706,6 +720,13 @@ export async function changeBarber(
   // Can only change barber for confirmed or aguardando
   if (!['confirmed', 'aguardando'].includes(existing.status)) {
     return { success: false, error: `Não é possível trocar profissional com status: ${existing.status}`, errorCode: 'INVALID_STATUS' };
+  }
+
+  // REGRA DE NEGÓCIO: Bloquear troca de profissional com menos de 1 hora de antecedência
+  const appointmentDateTime = new Date(`${existing.date}T${existing.time}:00`);
+  const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+  if (appointmentDateTime < oneHourFromNow) {
+    return { success: false, error: 'Falta menos de 1 hora para o seu agendamento! Para alterações, entre em contato pelo WhatsApp.', errorCode: 'TOO_CLOSE' };
   }
 
   // 2. Validate new barber is compatible
