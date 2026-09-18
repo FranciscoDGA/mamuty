@@ -19,6 +19,8 @@ import { checkBookingRateLimit, checkApiRateLimit } from '@/lib/rateLimit';
 // WEBHOOK UAZAPI WHATSAPP (Mamuty Barbearia)
 // ============================================
 
+const latestPayloads: { time: string; raw: string }[] = [];
+
 const clienteContexto: Map<
   string,
   {
@@ -38,6 +40,7 @@ export async function GET() {
     service: 'Mamuty WhatsApp Webhook (Uazapi)',
     configured: isUazapiConfigured(),
     timestamp: new Date().toISOString(),
+    recentPayloads: latestPayloads,
   });
 }
 
@@ -51,7 +54,11 @@ export async function POST(request: NextRequest) {
   try {
     // LOG RAW para diagnóstico
     const rawBody = await request.clone().text();
-    console.log('[Webhook Uazapi] RAW BODY:', rawBody.substring(0, 500));
+    console.log('[Webhook Uazapi] RAW BODY:', rawBody.substring(0, 2000));
+
+    // Salvar payload para diagnóstico via GET /api/webhooks/uazapi
+    latestPayloads.unshift({ time: new Date().toISOString(), raw: rawBody.substring(0, 3000) });
+    if (latestPayloads.length > 5) latestPayloads.pop();
 
     // 1. Validação do Secret (se configurado)
     const secretHeader =
