@@ -75,8 +75,7 @@ export function validarWebhookUazapi(receivedSecret?: string): boolean {
 // -------------------------------------------
 
 /**
- * Envia mensagem de texto via Uazapi
- * Suporta formatos padrão Uazapi / uazapiGO
+ * Envia mensagem de texto via Uazapi GO v2.1
  */
 export async function enviarMensagemUazapi(texto: string, phone: string): Promise<UazapiResponse> {
   if (!isUazapiConfigured()) {
@@ -89,24 +88,12 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'token': UAZAPI_TOKEN,
-    'sessionkey': UAZAPI_TOKEN,
-    'Client-Token': UAZAPI_TOKEN,
-    'Authorization': `Bearer ${UAZAPI_TOKEN}`,
   };
 
-  if (UAZAPI_SECRET) {
-    headers['secret'] = UAZAPI_SECRET;
-  }
-
-  // Tenta o endpoint principal /sendText da Uazapi
-  const primaryUrl = `${UAZAPI_BASE_URL}/sendText`;
+  const primaryUrl = `${UAZAPI_BASE_URL}/send/text`;
   const payload = {
-    session: UAZAPI_SESSION,
-    instance: UAZAPI_SESSION,
     number: cleanPhone,
-    phone: cleanPhone,
     text: texto,
-    message: texto,
   };
 
   try {
@@ -124,23 +111,6 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      // Fallback para endpoint alternativo /message/sendText ou instanciado
-      const fallbackUrl = `${UAZAPI_BASE_URL}/message/sendText`;
-      const fallbackController = new AbortController();
-      const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 8000);
-      
-      const fallbackResponse = await fetch(fallbackUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal: fallbackController.signal,
-      }).finally(() => clearTimeout(fallbackTimeoutId));
-
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json().catch(() => ({}));
-        return { success: true, data: fallbackData };
-      }
-
       console.error('[Uazapi] Falha no envio:', data);
       return {
         success: false,
@@ -158,7 +128,7 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
 }
 
 /**
- * Envia imagem ou documento via Uazapi
+ * Envia imagem ou documento via Uazapi GO v2.1
  */
 export async function enviarMidiaUazapi(
   phone: string,
@@ -171,7 +141,7 @@ export async function enviarMidiaUazapi(
   }
 
   const cleanPhone = normalizarTelefoneUazapi(phone);
-  const endpoint = tipo === 'document' ? `${UAZAPI_BASE_URL}/sendFile` : `${UAZAPI_BASE_URL}/sendMedia`;
+  const endpoint = `${UAZAPI_BASE_URL}/send/media`;
 
   try {
     const response = await fetch(endpoint, {
@@ -179,14 +149,11 @@ export async function enviarMidiaUazapi(
       headers: {
         'Content-Type': 'application/json',
         'token': UAZAPI_TOKEN,
-        'sessionkey': UAZAPI_TOKEN,
-        'Authorization': `Bearer ${UAZAPI_TOKEN}`,
       },
       body: JSON.stringify({
-        session: UAZAPI_SESSION,
         number: cleanPhone,
+        type: tipo,
         media: mediaUrl,
-        url: mediaUrl,
         caption: caption || '',
       }),
     });
