@@ -47,14 +47,32 @@ export function getUazapiConfig(): UazapiConfig {
 
 /**
  * Normaliza o telefone para o padrão do WhatsApp (55 + DDD + Número)
+ * Handles JID formats (@c.us, @s.whatsapp.net, @lid) from UAZAPI webhooks
  */
 export function normalizarTelefoneUazapi(phone: string): string {
-  let clean = phone.replace(/\D/g, '');
+  // Remove @c.us, @s.whatsapp.net, @lid and all non-digits
+  let clean = phone.replace(/@.*$/, '').replace(/\D/g, '');
 
-  // Se vier com sufixo @c.us ou @s.whatsapp.net já tratado
+  // Handle WhatsApp LID format (e.g. "38663681495209@lid" -> not a real phone)
+  // LIDs are 15+ digits — cannot be used to send messages
+  if (clean.length >= 15) {
+    console.warn(`[Uazapi] Phone "${phone}" looks like a WhatsApp LID (${clean.length} digits) — cannot normalize to phone number`);
+    return '';
+  }
+
+  // Brazilian numbers: 10 digits (landline) or 11 digits (mobile) without DDI
   if (clean.length === 10 || clean.length === 11) {
-    // Número brasileiro sem DDI 55
     clean = '55' + clean;
+  }
+
+  // Already has 55 prefix: validate it's a valid Brazilian length (12-13 digits)
+  if (clean.length === 12 || clean.length === 13) {
+    return clean; // OK: 55 + 2-digit DDD + 8/9-digit number
+  }
+
+  // If we end up with something unexpected, log it
+  if (clean.length > 0 && clean.length !== 12 && clean.length !== 13) {
+    console.warn(`[Uazapi] Phone normalization produced unexpected length: "${phone}" -> "${clean}" (${clean.length} digits)`);
   }
 
   return clean;
@@ -85,6 +103,12 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
 
   const cleanPhone = normalizarTelefoneUazapi(phone);
 
+  // Validate phone before sending
+  if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
+    console.error(`[Uazapi] Telefone inválido para envio: "${phone}" -> "${cleanPhone}"`);
+    return { success: false, error: `Telefone inválido: ${phone}` };
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'token': UAZAPI_TOKEN,
@@ -111,7 +135,7 @@ export async function enviarMensagemUazapi(texto: string, phone: string): Promis
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error('[Uazapi] Falha no envio:', data);
+      console.error('[Uazapi] Falha no envio:', JSON.stringify({ status: response.status, url: primaryUrl, data }));
       return {
         success: false,
         statusCode: response.status,

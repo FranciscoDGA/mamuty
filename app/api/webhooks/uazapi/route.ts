@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // LOG RAW para diagnóstico
+    const rawBody = await request.clone().text();
+    console.log('[Webhook Uazapi] RAW BODY:', rawBody.substring(0, 500));
+
     // 1. Validação do Secret (se configurado)
     const secretHeader =
       request.headers.get('secret') ||
@@ -114,6 +118,26 @@ export async function POST(request: NextRequest) {
       if (match2) rawFrom = match2[1];
     }
 
+    // Log the raw extraction for debugging
+    console.log(`[Webhook Uazapi] rawFrom="${rawFrom}", from="${rawData.from || ''}", phone="${rawData.phone || ''}", sender="${rawData.sender || ''}", remoteJid="${rawData.key?.remoteJid || ''}"`);
+
+    // If rawFrom is a LID format (no @c.us/@s.whatsapp.net), try to find actual phone
+    if (rawFrom && rawFrom.includes('@lid')) {
+      console.warn(`[Webhook Uazapi] Detected LID format: ${rawFrom} — searching for actual phone number`);
+      // Try alternative fields
+      const altPhone =
+        rawData.sender?.phone ||
+        rawData.sender?.phoneNumber ||
+        rawData.pushPhone ||
+        rawData.phone ||
+        rawData.contact?.phone ||
+        '';
+      if (altPhone && !altPhone.includes('@')) {
+        rawFrom = altPhone;
+        console.log(`[Webhook Uazapi] Found alternative phone: ${rawFrom}`);
+      }
+    }
+
     // Ignorar grupos do WhatsApp
     if (typeof rawFrom === 'string' && (rawFrom.includes('@g.us') || rawFrom.includes('-'))) {
       return NextResponse.json({ ok: true, ignored: 'group_message' });
@@ -154,7 +178,12 @@ export async function POST(request: NextRequest) {
     // Normalizar telefone
     const cleanPhone = normalizarTelefoneUazapi(String(rawFrom));
 
-    if (!cleanPhone || !messageBody) {
+    if (!cleanPhone || cleanPhone.length < 10) {
+      console.warn(`[Webhook Uazapi] Telefone inválido após normalização: rawFrom="${rawFrom}" -> cleanPhone="${cleanPhone}". Ignorando.`);
+      return NextResponse.json({ ok: true, ignored: 'invalid_phone', rawFrom });
+    }
+
+    if (!messageBody) {
       return NextResponse.json({ ok: true, ignored: 'empty_payload_or_no_text' });
     }
 
