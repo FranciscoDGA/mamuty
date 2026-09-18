@@ -54,8 +54,8 @@ export function normalizarTelefoneUazapi(phone: string): string {
   let clean = phone.replace(/@.*$/, '').replace(/\D/g, '');
 
   // Handle WhatsApp LID format (e.g. "38663681495209@lid" -> not a real phone)
-  // LIDs are 15+ digits — cannot be used to send messages
-  if (clean.length >= 15) {
+  // Valid Brazilian phone: 10-13 digits. Anything 14+ is a LID/JID.
+  if (clean.length >= 14) {
     console.warn(`[Uazapi] Phone "${phone}" looks like a WhatsApp LID (${clean.length} digits) — cannot normalize to phone number`);
     return '';
   }

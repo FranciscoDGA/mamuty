@@ -119,22 +119,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the raw extraction for debugging
-    console.log(`[Webhook Uazapi] rawFrom="${rawFrom}", from="${rawData.from || ''}", phone="${rawData.phone || ''}", sender="${rawData.sender || ''}", remoteJid="${rawData.key?.remoteJid || ''}"`);
+    console.log(`[Webhook Uazapi] rawFrom="${rawFrom}", from="${rawData.from || ''}", phone="${rawData.phone || ''}", sender="${JSON.stringify(rawData.sender || '')}", remoteJid="${rawData.key?.remoteJid || ''}"`);
+    console.log(`[Webhook Uazapi] RAW DATA keys: ${Object.keys(rawData).join(', ')}`);
+    console.log(`[Webhook Uazapi] RAW DATA full: ${JSON.stringify(rawData).substring(0, 800)}`);
 
     // If rawFrom is a LID format (no @c.us/@s.whatsapp.net), try to find actual phone
-    if (rawFrom && rawFrom.includes('@lid')) {
-      console.warn(`[Webhook Uazapi] Detected LID format: ${rawFrom} — searching for actual phone number`);
-      // Try alternative fields
-      const altPhone =
-        rawData.sender?.phone ||
-        rawData.sender?.phoneNumber ||
-        rawData.pushPhone ||
-        rawData.phone ||
-        rawData.contact?.phone ||
-        '';
-      if (altPhone && !altPhone.includes('@')) {
-        rawFrom = altPhone;
-        console.log(`[Webhook Uazapi] Found alternative phone: ${rawFrom}`);
+    if (rawFrom && (rawFrom.includes('@lid') || rawFrom.replace(/\D/g, '').length >= 14)) {
+      console.warn(`[Webhook Uazapi] Detected possible LID format: ${rawFrom} — searching for actual phone number`);
+      // Try alternative fields aggressively
+      const candidates = [
+        rawData.sender?.phone,
+        rawData.sender?.phoneNumber,
+        rawData.sender,
+        rawData.pushPhone,
+        rawData.phone,
+        rawData.contact?.phone,
+        rawData.notify,
+        rawData.verifiedName,
+        rawData.participant,
+      ].filter(Boolean);
+      
+      console.log(`[Webhook Uazapi] Phone candidates: ${JSON.stringify(candidates)}`);
+      
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string') {
+          const stripped = candidate.replace(/@.*$/, '').replace(/\D/g, '');
+          if (stripped.length >= 10 && stripped.length <= 13) {
+            rawFrom = candidate;
+            console.log(`[Webhook Uazapi] Found valid phone from candidates: ${rawFrom}`);
+            break;
+          }
+        }
       }
     }
 
