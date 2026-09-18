@@ -93,9 +93,13 @@ export async function POST(request: NextRequest) {
     const rawFrom =
       rawData.from ||
       rawData.phone ||
+      rawData.sender ||
+      rawData.chatid ||
       rawData.key?.remoteJid ||
       body.phone ||
       body.from ||
+      body.sender ||
+      body.chatid ||
       '';
 
     // Ignorar grupos do WhatsApp
