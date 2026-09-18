@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
+import { enviarMensagemUazapi } from '@/lib/uazapi';
 
 export async function GET() {
-  const token = process.env.UAZAPI_TOKEN || '';
+  const result = await enviarMensagemUazapi('Teste direto da Vercel (Debug) 🚀', '559484439065');
+  
   return NextResponse.json({
-    hasToken: !!token,
-    tokenStart: token.substring(0, 8),
-    baseUrl: process.env.UAZAPI_BASE_URL || 'not_set',
-    session: process.env.UAZAPI_SESSION || 'not_set',
-    geminiKeyStart: (process.env.GEMINI_API_KEY || '').substring(0, 8)
+    debug: true,
+    sendResult: result
   });
 }
