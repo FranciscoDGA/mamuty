@@ -90,17 +90,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Extrair identificador de telefone / remetente
-    const rawFrom =
+    let rawFrom =
       rawData.from ||
       rawData.phone ||
       rawData.sender ||
       rawData.chatid ||
       rawData.key?.remoteJid ||
+      rawData.message?.key?.remoteJid ||
+      body.data?.message?.key?.remoteJid ||
       body.phone ||
       body.from ||
       body.sender ||
       body.chatid ||
       '';
+
+    // Fallback: buscar o primeiro remoteJid na string do json se nada der certo
+    if (!rawFrom) {
+      const match = JSON.stringify(body).match(/"remoteJid":"([^"]+)"/);
+      if (match) rawFrom = match[1];
+    }
+    if (!rawFrom) {
+      const match2 = JSON.stringify(body).match(/"sender":"([^"]+)"/);
+      if (match2) rawFrom = match2[1];
+    }
 
     // Ignorar grupos do WhatsApp
     if (typeof rawFrom === 'string' && (rawFrom.includes('@g.us') || rawFrom.includes('-'))) {
@@ -114,7 +126,20 @@ export async function POST(request: NextRequest) {
     else if (typeof rawData.text === 'string') messageBody = rawData.text;
     else if (typeof rawData.message?.conversation === 'string') messageBody = rawData.message.conversation;
     else if (typeof rawData.message?.extendedTextMessage?.text === 'string') messageBody = rawData.message.extendedTextMessage.text;
+    else if (typeof body.data?.message?.message?.conversation === 'string') messageBody = body.data.message.message.conversation;
+    else if (typeof body.data?.message?.message?.extendedTextMessage?.text === 'string') messageBody = body.data.message.message.extendedTextMessage.text;
     else if (typeof body.message === 'string') messageBody = body.message;
+
+    // Fallback agressivo para o texto
+    if (!messageBody) {
+      const textMatch = JSON.stringify(body).match(/"conversation":"([^"]+)"/);
+      if (textMatch) messageBody = textMatch[1];
+    }
+    if (!messageBody) {
+      const textMatch2 = JSON.stringify(body).match(/"text":"([^"]+)"/);
+      if (textMatch2) messageBody = textMatch2[1];
+    }
+
 
     messageBody = messageBody.trim();
 
