@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
     let intentDetected = 'AI_CHAT';
 
     try {
-      if (process.env.GEMINI_API_KEY) {
+      if (process.env.GROQ_API_KEY) {
         // Limitar histórico para reduzir payload e latência
         const historySlice = contextoCliente.conversationHistory.slice(-10);
         const alfredResult = await alfredChat(messageBody, {
