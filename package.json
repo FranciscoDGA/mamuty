@@ -12,7 +12,7 @@
     "postbuild": "node scripts/convert-webp.js"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^2.23.0",
     "@hookform/resolvers": "^5.2.1",
     "@supabase/supabase-js": "^2.116.0",
     "@types/recharts": "^1.8.29",
