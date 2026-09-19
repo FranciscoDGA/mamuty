@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Extrair identificador de telefone / remetente
     let rawFrom =
+      rawData.sender_pn ||       // ← PRIORIDADE: telefone real do remetente
       rawData.from ||
       rawData.phone ||
       rawData.sender ||
