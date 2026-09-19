@@ -53,13 +53,15 @@ function ConfirmacaoContent() {
   const formattedDate = date ? date.split('-').reverse().join('/') : '';
   const PaymentIcon = paymentIcons[payment] || CreditCard;
 
-  const bookingUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/agendar`
-    : 'https://mamuty.vercel.app/agendar';
-
-  const whatsappMessage = encodeURIComponent(
-    `Fala!\n\nAgendei horario na *Barbearia Mamuty*:\n\n*${service}*\n${barber}\n${formattedDate} as ${time}\nR$ ${price}\n${paymentLabels[payment] || payment.toUpperCase()}\n\n*Mamuty barbearia estilo forte.*`
-  );
+  const [bookingUrl, setBookingUrl] = React.useState('https://mamuty.vercel.app/agendar');
+  const [whatsappMessage, setWhatsappMessage] = React.useState('');
+  
+  React.useEffect(() => {
+    setBookingUrl(`${window.location.origin}/agendar`);
+    setWhatsappMessage(encodeURIComponent(
+      `Fala!\n\nAgendei horario na *Barbearia Mamuty*:\n\n*${service}*\n${barber}\n${formattedDate} as ${time}\nR$ ${price}\n${paymentLabels[payment] || payment.toUpperCase()}\n\n*Mamuty barbearia estilo forte.*`
+    ));
+  }, [service, barber, formattedDate, time, price, payment]);
 
   const googleMapsUrl = `https://www.google.com/maps/search/Cumaru+do+Norte+PA`;
 
