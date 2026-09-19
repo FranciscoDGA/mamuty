@@ -269,7 +269,11 @@ export async function POST(request: NextRequest) {
       status: 'success',
     });
 
-    const contextoCliente = sessao.context || {
+    // PRIORIDADE: Map em memória > Supabase > novo contexto
+    // O Map em memória persiste entre requisições na mesma instância Vercel (quente)
+    // garantindo histórico da conversa mesmo se Supabase falhar ou tabelas não existirem
+    const contextoExistente = clienteContexto.get(cleanPhone);
+    const contextoCliente = contextoExistente || sessao.context || {
       conversationHistory: [],
       activeDraft: {},
       currentCustomer: cliente,
@@ -287,6 +291,12 @@ export async function POST(request: NextRequest) {
     });
     if (contextoCliente.conversationHistory.length > 20) {
       contextoCliente.conversationHistory = contextoCliente.conversationHistory.slice(-20);
+    }
+
+    // Limpar contextos muito antigos do Map (>500 entradas = segurança de memória)
+    if (clienteContexto.size > 500) {
+      const firstKey = clienteContexto.keys().next().value;
+      if (firstKey) clienteContexto.delete(firstKey);
     }
 
     // 6. Preparar catálogo de serviços, barbeiros e agendamentos em PARALELO
@@ -438,6 +448,9 @@ export async function POST(request: NextRequest) {
       role: 'assistant',
       content: replyText,
     });
+
+    // Salvar no Map em memória IMEDIATAMENTE (garante contexto na próxima mensagem)
+    clienteContexto.set(cleanPhone, contextoCliente);
 
     // 9. Registrar log da resposta
     const responseTime = Date.now() - startTime;
