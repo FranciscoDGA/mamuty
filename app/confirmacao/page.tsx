@@ -103,13 +103,17 @@ function ConfirmacaoContent() {
     } catch (e) {}
 
     // Exibir notificação local no navegador do cliente (se permitido)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Agendamento Confirmado! 🎉', {
-        body: `Seu horário com ${barber} no dia ${formattedDate} às ${time} foi marcado com sucesso!`,
-        icon: '/logo.png'
-      });
-    } else if ('Notification' in window && Notification.permission !== 'denied') {
-      Notification.requestPermission();
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Agendamento Confirmado! 🎉', {
+          body: `Seu horário com ${barber} no dia ${formattedDate} às ${time} foi marcado com sucesso!`,
+          icon: '/logo.png'
+        });
+      } else if ('Notification' in window && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    } catch (e) {
+      console.warn('Erro ao exibir notificação:', e);
     }
   }, [barber, formattedDate, time]);
 
