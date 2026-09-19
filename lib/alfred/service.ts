@@ -346,11 +346,11 @@ export async function alfredChat(
     const reply = response.text || 'Desculpe, não consegui processar sua mensagem.';
 
     return { reply, toolUsed, toolData };
-  } catch (error) {
-    console.error('[Alfred] Erro ao comunicar com Gemini:', error);
-    return {
-      reply: 'Desculpe, tive um problema técnico. Tente novamente em instantes ou acesse https://mamuty.vercel.app/agendar para agendar diretamente.'
-    };
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    console.error('[Alfred] Erro ao comunicar com Gemini:', errMsg);
+    // Re-lança o erro para o route.ts ativar o fallback brain.ts
+    throw error;
   }
 }
 
