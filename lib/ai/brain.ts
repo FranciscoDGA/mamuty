@@ -878,7 +878,7 @@ export async function pensarEResponderAlfred(
     norm === 'oi' || norm === 'ola' || norm === 'opa' || norm.startsWith('bom dia') || norm.startsWith('boa tarde') || norm.startsWith('boa noite') || norm === 'e ai' || norm === 'eai'
   ) {
     return {
-      reply: `Fala! 👊 Sou o *Alfred*, assistente da *Mamuty Barbearia*.\n\nComo posso te ajudar? 💈`,
+      reply: `Olá, tudo bem? Sou o *Alfred*, assistente virtual da *Mamuty Barbearia*! 💈🤖\n\nVocê pode agendar o seu horário rapidamente pelo nosso site oficial:\n🔗 https://mamuty.vercel.app/agendar\n\nMas se preferir, eu também posso te ajudar por aqui a ver horários, serviços e preços. Como prefere seguir?`,
       intent: 'GREETING',
       quickReplies: [
         { label: 'Quero agendar', action: 'START_BOOKING' },
@@ -927,7 +927,7 @@ export async function pensarEResponderAlfred(
   }
   
   return {
-    reply: `Fala, tudo bem? Sou o *Alfred*, assistente da *Mamuty Barbearia*! 💈\n\nPosso te ajudar a agendar, consultar preços ou ver horários.\n\nO que você precisa?`,
+    reply: `Olá, tudo bem? Sou o *Alfred*, assistente virtual da *Mamuty Barbearia*! 💈🤖\n\nVocê pode agendar o seu horário rapidamente pelo nosso site oficial:\n🔗 https://mamuty.vercel.app/agendar\n\nMas se preferir, eu também posso te ajudar por aqui a agendar, consultar preços ou ver horários. Como prefere seguir?`,
     intent: 'UNKNOWN',
     leadStatus: classificacaoLead.status,
     intencao: intencaoFinal,
