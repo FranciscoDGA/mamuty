@@ -891,7 +891,7 @@ export async function pensarEResponderAlfred(
   // Agradecimentos
   if (norm.includes('obrigado') || norm.includes('obrigada') || norm.includes('valeu') || norm.includes('thanks')) {
     return {
-      reply: `Tamo junto! 👊 Qualquer coisa, é só chamar. Até mais! 💈`,
+      reply: `É um prazer ajudar! 🤵 Qualquer necessidade, estarei à disposição. Até breve! 💈`,
       intent: 'THANKS',
       quickReplies: [
         { label: 'Menu inicial', action: 'GREETING' }
@@ -902,7 +902,7 @@ export async function pensarEResponderAlfred(
   // Adeus
   if (norm.includes('tchau') || norm.includes('ate mais') || norm.includes('até mais') || norm.includes('flw') || norm.includes('falou')) {
     return {
-      reply: `Valeu! 👊 Até a próxima na Mamuty! 💈`,
+      reply: `Foi um prazer atendê-lo. 🤵 Aguardamos sua visita na Mamuty! 💈`,
       intent: 'GOODBYE',
       quickReplies: []
     };
