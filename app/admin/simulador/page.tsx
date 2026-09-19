@@ -177,7 +177,7 @@ export default function SimuladorPage() {
                     {/* Renderiza imagem caso a mensagem possua mídia */}
                     {msg.mediaUrl && (
                       <div className="mb-2 rounded overflow-hidden">
-                        <img src={msg.mediaUrl} alt="Media" className="max-w-full h-auto object-cover max-h-[300px] w-full" />
+                        <img src={msg.mediaUrl} alt="Media" className="h-auto object-contain max-h-[200px] w-[260px] rounded" />
                       </div>
                     )}
                     {/* Renderizamos as quebras de linha corretamente */}
