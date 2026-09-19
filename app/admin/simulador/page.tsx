@@ -6,6 +6,7 @@ import { Send, Trash2, Bot, User, Phone, CheckCircle2 } from 'lucide-react';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  mediaUrl?: string;
 }
 
 export default function SimuladorPage() {
@@ -62,7 +63,11 @@ export default function SimuladorPage() {
         throw new Error(data.error || 'Erro ao comunicar com o servidor');
       }
 
-      setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+      const mediaUrl = (data.intent === 'GREETING' || data.intent === 'UNKNOWN') 
+        ? '/alfred-avatar.jpg' 
+        : undefined;
+
+      setMessages([...newMessages, { role: 'assistant', content: data.reply, mediaUrl }]);
     } catch (error: any) {
       console.error('Erro no simulador:', error);
       setMessages([
@@ -169,6 +174,12 @@ export default function SimuladorPage() {
                         : 'bg-white text-gray-800 rounded-tl-none'
                     }`}
                   >
+                    {/* Renderiza imagem caso a mensagem possua mídia */}
+                    {msg.mediaUrl && (
+                      <div className="mb-2 rounded overflow-hidden">
+                        <img src={msg.mediaUrl} alt="Media" className="max-w-full h-auto object-cover max-h-[300px] w-full" />
+                      </div>
+                    )}
                     {/* Renderizamos as quebras de linha corretamente */}
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
                       {msg.content}

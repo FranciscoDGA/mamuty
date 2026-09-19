@@ -473,7 +473,26 @@ export async function POST(request: NextRequest) {
     });
 
     // 10. Disparar resposta ao cliente via Uazapi
-    const sendResult = await enviarMensagemUazapi(replyText, cleanPhone);
+    let sendResult;
+    
+    // Se for o primeiro contato (saudação ou desconhecido fallback)
+    if (intentDetected === 'GREETING' || intentDetected === 'UNKNOWN') {
+      // Importante: a URL precisa estar acessível na internet.
+      // Se não houver VERCEL_URL, tenta um fallback.
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mamuty.vercel.app';
+      const imageUrl = `${baseUrl}/alfred-avatar.jpg`;
+      
+      // Envia a imagem com o texto como legenda (caption)
+      const { enviarMidiaUazapi } = await import('@/lib/uazapi');
+      sendResult = await enviarMidiaUazapi(cleanPhone, imageUrl, replyText, 'image');
+      
+      // Se falhar o envio da mídia (ex: URL inválida), faz fallback para texto puro
+      if (!sendResult.success) {
+        sendResult = await enviarMensagemUazapi(replyText, cleanPhone);
+      }
+    } else {
+      sendResult = await enviarMensagemUazapi(replyText, cleanPhone);
+    }
 
     return NextResponse.json({
       ok: true,
