@@ -289,26 +289,31 @@ export async function POST(request: NextRequest) {
       contextoCliente.conversationHistory = contextoCliente.conversationHistory.slice(-20);
     }
 
-    // 6. Preparar catálogo de serviços, barbeiros e agendamentos
+    // 6. Preparar catálogo de serviços, barbeiros e agendamentos em PARALELO
     let services: Service[] = [];
     let barbers: Barber[] = [];
     let appointments: Appointment[] = [];
 
-    try {
-      const { data: dbServices } = await supabase.from('services').select('*').eq('active', true);
-      if (dbServices && dbServices.length > 0) {
-        services = dbServices.map((s) => ({
-          id: s.id,
-          name: s.name,
-          category: s.category || 'cabelo',
-          description: s.description || '',
-          price: Number(s.price),
-          durationMinutes: s.duration_minutes || 30,
-          pointsReward: s.points_reward || 0,
-          active: s.active,
-        }));
-      }
-    } catch {
+    const today = new Date().toISOString().split('T')[0];
+
+    const [servicesResult, barbersResult, appointmentsResult] = await Promise.allSettled([
+      supabase.from('services').select('id,name,category,description,price,duration_minutes,points_reward,active').eq('active', true),
+      supabase.from('barbers').select('id,name,role,avatar_url,rating,reviews_count,specialties,phone,bio,available_days,active').eq('active', true),
+      supabase.from('appointments').select('id,customer_name,customer_phone,barber_id,barber_name,service_ids,service_names,date,time,total_price,total_duration_minutes,payment_method,payment_status,status,whatsapp_notification_sent,created_at').gte('date', today).lte('date', today),
+    ]);
+
+    if (servicesResult.status === 'fulfilled' && servicesResult.value.data?.length) {
+      services = servicesResult.value.data.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category || 'cabelo',
+        description: s.description || '',
+        price: Number(s.price),
+        durationMinutes: s.duration_minutes || 30,
+        pointsReward: s.points_reward || 0,
+        active: s.active,
+      }));
+    } else {
       services = MAMUTY_KNOWLEDGE_BASE.servicos.map((s) => ({
         id: s.id,
         name: s.nome,
@@ -321,23 +326,20 @@ export async function POST(request: NextRequest) {
       }));
     }
 
-    try {
-      const { data: dbBarbers } = await supabase.from('barbers').select('*').eq('active', true);
-      if (dbBarbers && dbBarbers.length > 0) {
-        barbers = dbBarbers.map((b) => ({
-          id: b.id,
-          name: b.name,
-          role: b.role || 'barbeiro',
-          avatarUrl: b.avatar_url || '',
-          rating: b.rating || 0,
-          reviewsCount: b.reviews_count || 0,
-          specialties: b.specialties || [],
-          phone: b.phone || '',
-          bio: b.bio || '',
-          availableDays: b.available_days || [1, 2, 3, 4, 5, 6],
-        }));
-      }
-    } catch {
+    if (barbersResult.status === 'fulfilled' && barbersResult.value.data?.length) {
+      barbers = barbersResult.value.data.map((b) => ({
+        id: b.id,
+        name: b.name,
+        role: b.role || 'barbeiro',
+        avatarUrl: b.avatar_url || '',
+        rating: b.rating || 0,
+        reviewsCount: b.reviews_count || 0,
+        specialties: b.specialties || [],
+        phone: b.phone || '',
+        bio: b.bio || '',
+        availableDays: b.available_days || [1, 2, 3, 4, 5, 6],
+      }));
+    } else {
       barbers = MAMUTY_KNOWLEDGE_BASE.barbeiros.map((b) => ({
         id: b.id,
         name: b.nome,
@@ -352,34 +354,28 @@ export async function POST(request: NextRequest) {
       }));
     }
 
-    try {
-      const { data: dbAppointments } = await supabase
-        .from('appointments')
-        .select('*')
-        .gte('date', new Date().toISOString().split('T')[0]);
-      if (dbAppointments) {
-        appointments = dbAppointments.map((a) => ({
-          id: a.id,
-          customerName: a.customer_name,
-          customerPhone: a.customer_phone,
-          barberId: a.barber_id,
-          barberName: a.barber_name,
-          serviceIds: a.service_ids || [],
-          serviceNames: a.service_names || [],
-          date: a.date,
-          time: a.time,
-          totalPrice: Number(a.total_price),
-          totalDurationMinutes: a.total_duration_minutes,
-          paymentMethod: a.payment_method,
-          paymentStatus: a.payment_status,
-          status: a.status,
-          whatsappNotificationSent: a.whatsapp_notification_sent,
-          createdAt: a.created_at,
-        }));
-      }
-    } catch (e) {
-      console.warn('[Webhook Uazapi] Erro ao buscar appointments', e);
+    if (appointmentsResult.status === 'fulfilled' && appointmentsResult.value.data) {
+      appointments = appointmentsResult.value.data.map((a) => ({
+        id: a.id,
+        customerName: a.customer_name,
+        customerPhone: a.customer_phone,
+        barberId: a.barber_id,
+        barberName: a.barber_name,
+        serviceIds: a.service_ids || [],
+        serviceNames: a.service_names || [],
+        date: a.date,
+        time: a.time,
+        totalPrice: Number(a.total_price),
+        totalDurationMinutes: a.total_duration_minutes,
+        paymentMethod: a.payment_method,
+        paymentStatus: a.payment_status,
+        status: a.status,
+        whatsappNotificationSent: a.whatsapp_notification_sent,
+        createdAt: a.created_at,
+      }));
     }
+
+    console.log(`[Webhook Uazapi] Catálogo: ${services.length} serviços, ${barbers.length} barbeiros, ${appointments.length} agendamentos hoje`);
 
     // 7. Cérebro do Atendente Alfred (Gemini AI com ferramentas)
     let replyText = '';
@@ -387,12 +383,14 @@ export async function POST(request: NextRequest) {
 
     try {
       if (process.env.GEMINI_API_KEY) {
+        // Limitar histórico para reduzir payload e latência
+        const historySlice = contextoCliente.conversationHistory.slice(-10);
         const alfredResult = await alfredChat(messageBody, {
           services,
           barbers,
           appointments,
           currentCustomer: contextoCliente.currentCustomer,
-          conversationHistory: contextoCliente.conversationHistory.map((m: any) => ({
+          conversationHistory: historySlice.map((m: any) => ({
             role: m.role,
             content: m.content,
           })),
@@ -403,8 +401,9 @@ export async function POST(request: NextRequest) {
           intentDetected = alfredResult.toolUsed || 'GEMINI_ALFRED';
         }
       }
-    } catch (geminiErr) {
-      console.warn('[Webhook Uazapi] Erro ao chamar Alfred Gemini:', geminiErr);
+    } catch (geminiErr: any) {
+      console.error('[Webhook Uazapi] Erro ao chamar Alfred Gemini:', geminiErr?.message || geminiErr);
+      console.error('[Webhook Uazapi] Stack Gemini:', geminiErr?.stack?.substring(0, 500));
     }
 
     // Fallback inteligente
