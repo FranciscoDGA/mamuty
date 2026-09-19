@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    if (process.env.PAUSE_WHATSAPP_BOT === 'true') {
+      console.log('[Webhook Z-API] BOT PAUSADO via variável de ambiente.');
+      return NextResponse.json({ ok: true, paused: true, message: 'Bot paused via env' });
+    }
     // 1. Validar webhook via Security-Key
     const securityKey = request.headers.get('security-key') || undefined;
     if (!validarWebhook(securityKey)) {

@@ -52,6 +52,11 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    if (process.env.PAUSE_WHATSAPP_BOT === 'true') {
+      console.log('[Webhook Uazapi] BOT PAUSADO via variável de ambiente. Ignorando mensagem.');
+      return NextResponse.json({ ok: true, paused: true, message: 'Bot paused via env' });
+    }
+
     // LOG RAW para diagnóstico
     const rawBody = await request.clone().text();
     console.log('[Webhook Uazapi] RAW BODY:', rawBody.substring(0, 2000));
