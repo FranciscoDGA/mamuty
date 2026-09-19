@@ -8,10 +8,14 @@ import {
   AlfredToolContext
 } from './tools';
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-
 function getGroqClient() {
-  return new Groq({ apiKey: process.env.GROQ_API_KEY || '' });
+  const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || '';
+  const baseURL = process.env.GROQ_API_KEY ? undefined : 'https://generativelanguage.googleapis.com/v1beta/openai/';
+  return new Groq({ apiKey, baseURL });
+}
+
+function getModel() {
+  return process.env.GROQ_API_KEY ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') : 'gemini-2.5-flash';
 }
 
 export interface AlfredMessage {
@@ -297,10 +301,12 @@ export async function alfredChat(
   userMessage: string,
   context: AlfredContext
 ): Promise<AlfredResponse> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GROQ_API_KEY não configurada');
+    throw new Error('GROQ_API_KEY ou GEMINI_API_KEY não configurada');
   }
+
+  const currentModel = getModel();
 
   const toolCtx: AlfredToolContext = {
     services: context.services,
@@ -326,7 +332,7 @@ export async function alfredChat(
   try {
     const groq = getGroqClient();
     let response = await groq.chat.completions.create({
-      model: GROQ_MODEL,
+      model: currentModel,
       messages,
       tools: getGroqTools(),
       tool_choice: 'auto',
@@ -379,7 +385,7 @@ export async function alfredChat(
 
       // Nova chamada com os resultados das tools
       response = await groq.chat.completions.create({
-        model: GROQ_MODEL,
+        model: currentModel,
         messages,
         tools: getGroqTools(),
         tool_choice: 'auto',
