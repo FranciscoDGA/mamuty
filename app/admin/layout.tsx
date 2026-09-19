@@ -24,7 +24,8 @@ import {
   ChevronRight,
   HelpCircle,
   Calendar,
-  Rocket
+  Rocket,
+  Bot
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -64,6 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/automacoes', label: 'Automações', icon: Sparkles },
     { href: '/admin/whatsapp', label: 'WhatsApp Monitor', icon: Sparkles },
+    { href: '/admin/simulador', label: 'Simulador IA', icon: Bot },
     { href: '/admin/marketing', label: 'Marketing & QR Code', icon: Sparkles },
     { href: '/admin/futuro', label: 'Mamuty Labs (Futuro)', icon: Rocket },
     { href: '/admin/ajuda', label: 'Ajuda & Treinamento', icon: HelpCircle, isSpecial: true },
