@@ -270,13 +270,15 @@ export async function POST(request: NextRequest) {
     });
 
     // PRIORIDADE: Map em memória > Supabase > novo contexto
-    // O Map em memória persiste entre requisições na mesma instância Vercel (quente)
-    // garantindo histórico da conversa mesmo se Supabase falhar ou tabelas não existirem
     const contextoExistente = clienteContexto.get(cleanPhone);
-    const contextoCliente = contextoExistente || sessao.context || {
+    const contextoCliente = (contextoExistente || sessao.context || {
       conversationHistory: [],
       activeDraft: {},
       currentCustomer: cliente,
+    }) as {
+      conversationHistory: { role: 'user' | 'assistant'; content: string }[];
+      activeDraft: any;
+      currentCustomer: Customer | null;
     };
 
     if (cliente && !contextoCliente.currentCustomer) {
