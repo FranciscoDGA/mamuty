@@ -161,7 +161,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ignorar grupos do WhatsApp
+    // Ignorar grupos do WhatsApp (verificar chatid, não rawFrom)
+    const chatId = rawData.chatid || rawData.chatId || '';
+    if (typeof chatId === 'string' && chatId.includes('@g.us')) {
+      console.log(`[Webhook Uazapi] Ignorando mensagem de grupo: ${chatId}`);
+      return NextResponse.json({ ok: true, ignored: 'group_message' });
+    }
     if (typeof rawFrom === 'string' && (rawFrom.includes('@g.us') || rawFrom.includes('-'))) {
       return NextResponse.json({ ok: true, ignored: 'group_message' });
     }
