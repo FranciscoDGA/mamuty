@@ -36,6 +36,11 @@ export default function AgendarPage() {
   const [reviewingAppointment, setReviewingAppointment] = useState<Appointment | null>(null);
   const [modalRating, setModalRating] = useState(5);
   const [modalComment, setModalComment] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCreateCustomerProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +76,16 @@ export default function AgendarPage() {
     alert('Avaliação registrada com sucesso! Muito obrigado.');
   };
 
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#070a12] flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></div>
+    </div>;
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#070a12] text-slate-100">
       <OfflineIndicator />
+
       
       {/* Header Simples */}
       <header className="sticky top-0 z-40 w-full bg-[#090d16]/95 backdrop-blur-lg border-b border-slate-800/80">
